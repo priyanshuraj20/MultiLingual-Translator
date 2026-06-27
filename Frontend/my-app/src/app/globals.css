@@ -1,55 +1,114 @@
 @import "tailwindcss";
 
 @theme {
-  --font-sans: var(--font-geist-sans), sans-serif;
+  --font-sans: var(--font-inter), sans-serif;
+  --font-geist: var(--font-geist-sans), sans-serif;
   --font-mono: var(--font-geist-mono), monospace;
 
-  /* Theme color configuration for Precision Dark system */
+  /* Obsidian Flux - Color Tokens */
   --color-background: #000000;
-  --color-surface: #0a0a0a;
-  
-  --color-primary: #b9c3ff;
-  --color-on-primary: #00228b;
-  --color-primary-container: #2f54eb;
-  --color-on-primary-container: #dee1ff;
-  --color-inverse-primary: #254ce4;
-  
-  --color-secondary: #c6c6c7;
-  --color-on-secondary: #2f3131;
-  --color-secondary-container: #454747;
-  --color-on-secondary-container: #b4b5b5;
-  
-  --color-tertiary: #ffb59a;
-  --color-on-tertiary: #5b1b00;
-  --color-tertiary-container: #b33d00;
-  --color-on-tertiary-container: #ffdbcf;
-  
+  --color-surface: #15121b;
+  --color-surface-dim: #15121b;
+  --color-surface-bright: #3b3742;
+
+  --color-surface-container-lowest: #0f0d15;
+  --color-surface-container-low: #1d1a23;
+  --color-surface-container: #211e27;
+  --color-surface-container-high: #2c2832;
+  --color-surface-container-highest: #37333d;
+
+  --color-primary: #d0bcff;
+  --color-on-primary: #3c0091;
+  --color-primary-container: #a078ff;
+  --color-on-primary-container: #340080;
+  --color-inverse-primary: #6d3bd7;
+
+  --color-secondary: #adc6ff;
+  --color-on-secondary: #002e6a;
+  --color-secondary-container: #0566d9;
+  --color-on-secondary-container: #e6ecff;
+
+  --color-tertiary: #ffb869;
+  --color-on-tertiary: #482900;
+  --color-tertiary-container: #ca801e;
+  --color-on-tertiary-container: #3f2300;
+
   --color-error: #ffb4ab;
   --color-on-error: #690005;
   --color-error-container: #93000a;
   --color-on-error-container: #ffdad6;
 
-  --color-on-surface: #e2e2e2;
-  --color-on-surface-variant: #a1a1aa;
-  
-  --color-outline: rgba(255, 255, 255, 0.1);
-  --color-outline-variant: #222222;
+  --color-on-background: #e7e0ed;
+  --color-on-surface: #e7e0ed;
+  --color-on-surface-variant: #cbc3d7;
+  --color-inverse-surface: #e7e0ed;
+  --color-inverse-on-surface: #322f39;
 
-  --color-surface-container: #1f1f1f;
-  --color-surface-container-high: #2a2a2a;
-  --color-surface-container-highest: #353535;
-  --color-surface-container-low: #1b1b1b;
-  --color-surface-container-lowest: #0e0e0e;
+  --color-outline: #958ea0;
+  --color-outline-variant: #494454;
+
+  /* Fixed state styles */
+  --color-primary-fixed: #e9ddff;
+  --color-primary-fixed-dim: #d0bcff;
+  --color-on-primary-fixed: #23005c;
+  --color-on-primary-fixed-variant: #5516be;
+
+  --color-secondary-fixed: #d8e2ff;
+  --color-secondary-fixed-dim: #adc6ff;
+  --color-on-secondary-fixed: #001a42;
+  --color-on-secondary-fixed-variant: #004395;
+
+  --color-tertiary-fixed: #ffdcbb;
+  --color-tertiary-fixed-dim: #ffb869;
+  --color-on-tertiary-fixed: #2c1700;
+  --color-on-tertiary-fixed-variant: #673d00;
+
+  /* Custom roundings */
+  --border-radius-DEFAULT: 0.125rem;
+  --border-radius-lg: 0.25rem;
+  --border-radius-xl: 0.5rem;
+  --border-radius-full: 0.75rem;
+
+  /* Spacing */
+  --spacing-stack-lg: 32px;
+  --spacing-stack-md: 16px;
+  --spacing-margin-safe: 32px;
+  --spacing-unit: 4px;
+  --spacing-gutter: 24px;
+  --spacing-section-gap: 80px;
+  --spacing-stack-sm: 8px;
+  --spacing-container-max: 1200px;
+}
+
+/* Custom design system utilities */
+@utility sidebar-item-active {
+  background: linear-gradient(90deg, rgba(139, 92, 246, 0.1) 0%, transparent 100%);
+  color: #d0bcff;
+  border-left: 2px solid #8b5cf6;
+}
+
+@utility stream-text {
+  background: linear-gradient(90deg, #e7e0ed 0%, #e7e0ed 70%, rgba(231, 224, 237, 0.2) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+@utility glass-panel {
+  background: rgba(15, 13, 21, 0.7);
+  backdrop-filter: blur(24px);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+@utility premium-card {
+  background: rgba(255, 255, 255, 0.02);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 12px;
+  box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.2);
 }
 
 @utility hairline-border {
-  border: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-@utility technical-card {
-  background: #0a0a0a;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  transition: border-color 0.2s ease;
+  border: 1px solid rgba(255, 255, 255, 0.05);
 }
 
 @utility custom-scrollbar {
@@ -77,7 +136,16 @@
   }
 }
 
-/* Custom waveform and indicator animations */
+/* Custom animations */
+@keyframes streaming-blink {
+  0%, 100% { opacity: 0; }
+  50% { opacity: 1; }
+}
+
+@utility animate-streaming-cursor {
+  animation: streaming-blink 1s step-end infinite;
+}
+
 @keyframes pulse-recording {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.4; }
@@ -105,9 +173,24 @@
   animation: pulse-bg 3s ease-in-out infinite;
 }
 
+html {
+  scroll-behavior: smooth;
+  scroll-padding-top: 90px;
+}
+
 body {
   font-family: var(--font-sans);
   background-color: #000000;
-  color: #ffffff;
+  color: #e7e0ed;
   overflow-x: hidden;
+  font-feature-settings: "ss01", "ss02", "cv01";
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Custom Cursor Hiding on Desktop */
+@media (pointer: fine) {
+  body, a, button, [role="button"], .premium-card {
+    cursor: none !important;
+  }
 }

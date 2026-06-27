@@ -1,0 +1,385 @@
+<html class="dark" lang="en"><head></head><body class="font-body-md text-body-md h-screen flex relative">```html
+
+
+    <meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Voxa | Cinematic Precision Workspace</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&amp;family=Geist:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-tertiary": "#482900",
+                        "primary-container": "#a078ff",
+                        "surface-container-lowest": "#0f0d15",
+                        "surface-dim": "#15121b",
+                        "surface-container": "#211e27",
+                        "on-primary-fixed": "#23005c",
+                        "surface-container-high": "#2c2832",
+                        "error-container": "#93000a",
+                        "on-error-container": "#ffdad6",
+                        "tertiary": "#ffb869",
+                        "primary-fixed": "#e9ddff",
+                        "background": "#0a0a0f",
+                        "secondary-fixed": "#d8e2ff",
+                        "error": "#ffb4ab",
+                        "on-tertiary-container": "#3f2300",
+                        "primary": "#d0bcff",
+                        "surface-bright": "#3b3742",
+                        "on-primary-fixed-variant": "#5516be",
+                        "on-surface": "#e7e0ed",
+                        "secondary": "#adc6ff",
+                        "surface-variant": "#37333d",
+                        "tertiary-fixed": "#ffdcbb",
+                        "outline": "#958ea0",
+                        "secondary-container": "#0566d9",
+                        "tertiary-container": "#ca801e",
+                        "secondary-fixed-dim": "#adc6ff",
+                        "on-secondary": "#002e6a",
+                        "on-secondary-fixed-variant": "#004395",
+                        "on-error": "#690005",
+                        "on-tertiary-fixed": "#2c1700",
+                        "surface-tint": "#d0bcff",
+                        "on-surface-variant": "#cbc3d7",
+                        "on-secondary-fixed": "#001a42",
+                        "surface": "#15121b",
+                        "on-background": "#e7e0ed",
+                        "tertiary-fixed-dim": "#ffb869",
+                        "on-tertiary-fixed-variant": "#673d00",
+                        "on-secondary-container": "#e6ecff",
+                        "on-primary": "#3c0091",
+                        "outline-variant": "#494454",
+                        "surface-container-low": "#1d1a23",
+                        "surface-container-highest": "#37333d",
+                        "inverse-surface": "#e7e0ed",
+                        "inverse-primary": "#6d3bd7",
+                        "on-primary-container": "#340080",
+                        "inverse-on-surface": "#322f39",
+                        "primary-fixed-dim": "#d0bcff"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "spacing": {
+                        "stack-lg": "32px",
+                        "stack-md": "16px",
+                        "margin-safe": "32px",
+                        "unit": "4px",
+                        "gutter": "24px",
+                        "section-gap": "80px",
+                        "stack-sm": "8px",
+                        "container-max": "1200px"
+                    },
+                    "fontFamily": {
+                        "body-md": ["Inter"],
+                        "headline-lg": ["Geist"],
+                        "body-sm": ["Inter"],
+                        "display-lg": ["Geist"],
+                        "label-md": ["Geist"],
+                        "body-lg": ["Inter"],
+                        "headline-md": ["Geist"],
+                        "mono-md": ["Geist"]
+                    },
+                    "fontSize": {
+                        "body-md": ["16px", {"lineHeight": "24px", "letterSpacing": "0.01em", "fontWeight": "300"}],
+                        "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.04em", "fontWeight": "600"}],
+                        "body-sm": ["14px", {"lineHeight": "20px", "letterSpacing": "0em", "fontWeight": "400"}],
+                        "display-lg": ["64px", {"lineHeight": "72px", "letterSpacing": "-0.05em", "fontWeight": "700"}],
+                        "label-md": ["14px", {"lineHeight": "20px", "letterSpacing": "0.1em", "fontWeight": "500"}],
+                        "body-lg": ["18px", {"lineHeight": "28px", "letterSpacing": "0.01em", "fontWeight": "300"}],
+                        "headline-md": ["26px", {"lineHeight": "34px", "letterSpacing": "-0.03em", "fontWeight": "500"}],
+                        "mono-md": ["14px", {"lineHeight": "20px", "letterSpacing": "0.02em", "fontWeight": "400"}]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body {
+            background-color: #000000;
+            color: #e7e0ed;
+            overflow: hidden;
+            font-feature-settings: "ss01", "ss02", "cv01";
+        }
+        .sidebar-item-active {
+            background: linear-gradient(90deg, rgba(139, 92, 246, 0.1) 0%, transparent 100%);
+            color: #d0bcff;
+            border-left: 2px solid #8B5CF6;
+        }
+        .stream-text {
+            background: linear-gradient(90deg, #e7e0ed 0%, #e7e0ed 70%, rgba(231, 224, 237, 0.2) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .glass-panel {
+            background: rgba(15, 13, 21, 0.7);
+            backdrop-filter: blur(24px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+        .premium-card {
+            background: rgba(255, 255, 255, 0.02);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+            box-shadow: inset 0 0 20px rgba(0,0,0,0.2);
+        }
+        #shader-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+            opacity: 0.4;
+            pointer-events: none;
+        }
+    </style>
+<!-- Background Shader -->
+<canvas id="shader-canvas"></canvas>
+<!-- Sidebar Navigation -->
+<aside class="w-72 border-r border-white/5 bg-black/40 backdrop-blur-xl flex flex-col z-50">
+<div class="p-stack-lg h-20 flex items-center gap-3">
+<img alt="Voxa Logo" class="w-10 h-10 object-contain" src="https://lh3.googleusercontent.com/aida/AP1WRLuKVSk3_84_5GQ6VkK2082k2yi4ZiupJd9HG6EFX_8ZdPjwMZ0pLB9YafMoTihOJwySlqPC8GR_ysGt6qanmSuH3t0OgpcAsHo_JkfRvhqb2XSZOGNqnsNNnHc4yj2BKgPqtrsSHLUsfnNcL6VIJQFqaFU51fidPBqq50VrfNldOBJEFxfdb-9Byi7HcQqBxZpgL9YnhDIkarAFkZnrdwPiDUPTpeQziyaJdyrhHuLsyC_MvFuOTOSzWw"/>
+<span class="font-headline-md text-headline-md font-bold text-on-background tracking-tight">Voxa</span>
+</div>
+<nav class="flex-1 mt-stack-md">
+<ul class="space-y-1">
+<li>
+<a class="sidebar-item-active flex items-center px-stack-lg py-4 font-label-md text-label-md transition-all" href="#">
+<span class="material-symbols-outlined mr-4 text-[22px]" style="font-variation-settings: 'FILL' 1;">dashboard</span>
+                        Workspace
+                    </a>
+</li>
+<li>
+<a class="flex items-center px-stack-lg py-4 text-on-surface-variant hover:text-on-surface transition-all font-label-md text-label-md" href="#">
+<span class="material-symbols-outlined mr-4 text-[22px]">play_circle</span>
+                        Live Sandbox
+                    </a>
+</li>
+<li>
+<a class="flex items-center px-stack-lg py-4 text-on-surface-variant hover:text-on-surface transition-all font-label-md text-label-md" href="#">
+<span class="material-symbols-outlined mr-4 text-[22px]">extension</span>
+                        Extension Setup
+                    </a>
+</li>
+<li>
+<a class="flex items-center px-stack-lg py-4 text-on-surface-variant hover:text-on-surface transition-all font-label-md text-label-md" href="#">
+<span class="material-symbols-outlined mr-4 text-[22px]">browser_updated</span>
+                        Browser Settings
+                    </a>
+</li>
+</ul>
+</nav>
+<div class="p-stack-lg border-t border-white/5">
+<a class="flex items-center text-on-surface-variant hover:text-on-surface transition-all font-label-md text-label-md" href="#">
+<span class="material-symbols-outlined mr-4 text-[22px]">settings</span>
+                Preferences
+            </a>
+<div class="mt-8 flex items-center gap-4 p-3 bg-white/5 rounded-xl border border-white/5">
+<div class="w-10 h-10 rounded-lg bg-primary-container flex items-center justify-center text-on-primary-container font-bold text-sm shadow-lg shadow-primary/20">JD</div>
+<div class="flex flex-col">
+<span class="text-sm font-semibold text-on-background">John Developer</span>
+<span class="text-[11px] text-primary/70 font-mono tracking-wider">EXTENSION ACTIVE</span>
+</div>
+</div>
+</div>
+</aside>
+<!-- Main Content Canvas -->
+<main class="flex-1 flex flex-col relative overflow-hidden z-10">
+<!-- Banner: Download & Sync -->
+<div class="bg-gradient-to-r from-primary/20 to-secondary/10 border-b border-primary/20 px-margin-safe py-3 flex items-center justify-between z-20">
+<div class="flex items-center gap-4">
+<div class="w-8 h-8 rounded-lg bg-primary/20 flex items-center justify-center text-primary">
+<span class="material-symbols-outlined text-lg">download_for_offline</span>
+</div>
+<p class="text-body-sm font-medium text-primary-fixed">Sync Voxa Extension to enable cross-tab translation in your browser.</p>
+</div>
+<button class="text-label-md text-primary hover:underline font-bold flex items-center gap-2">
+                Download &amp; Sync Extension
+                <span class="material-symbols-outlined text-sm">open_in_new</span>
+</button>
+</div>
+<!-- Top Header -->
+<header class="h-20 flex justify-between items-center px-margin-safe border-b border-white/5 z-10 bg-black/20 backdrop-blur-md">
+<div class="flex items-center gap-6">
+<div class="flex items-center bg-surface-container-high/40 rounded-full px-5 py-2 border border-white/10 backdrop-blur-sm">
+<span class="font-label-md text-label-md text-on-surface-variant">Browser Source</span>
+<span class="material-symbols-outlined mx-3 text-primary/50 text-base">east</span>
+<span class="font-label-md text-label-md text-primary font-semibold">Active Layer</span>
+</div>
+</div>
+<div class="flex items-center gap-10 font-mono-md text-mono-md">
+<div class="flex flex-col items-end">
+<span class="text-[10px] text-outline/60 uppercase tracking-[0.2em] font-bold">Sync Status</span>
+<span class="text-primary font-bold text-lg">Connected</span>
+</div>
+<div class="flex flex-col items-end">
+<span class="text-[10px] text-outline/60 uppercase tracking-[0.2em] font-bold">Version</span>
+<span class="text-secondary font-bold text-lg">v2.4.0</span>
+</div>
+<button class="bg-primary hover:brightness-110 text-[#23005c] font-label-md text-label-md px-6 py-3 rounded-full transition-all active:scale-95 shadow-lg shadow-primary/20 font-bold">
+                    Open Settings
+                </button>
+</div>
+</header>
+<!-- Split View Workspace (Live Demo / Sandbox) -->
+<div class="flex-1 grid grid-cols-2 gap-px bg-white/5 overflow-hidden">
+<!-- Left: Extension Sandbox Context -->
+<section class="flex flex-col p-stack-lg relative overflow-y-auto bg-black/10">
+<div class="flex justify-between items-center mb-10">
+<h2 class="font-label-md text-label-md uppercase tracking-[0.2em] text-outline/80">Sandbox | Extension Context</h2>
+<span class="flex items-center gap-2 text-[11px] text-primary font-bold tracking-widest bg-primary/10 px-3 py-1 rounded-full border border-primary/20">
+<span class="w-2 h-2 rounded-full bg-primary animate-ping"></span>
+                        SIMULATING BROWSER
+                    </span>
+</div>
+<div class="premium-card flex-1 p-8 overflow-y-auto">
+<div class="space-y-8 font-headline-md text-headline-md leading-[1.6]">
+<p class="text-on-surface-variant/40 font-light italic text-body-lg">Simulating translation on a web page...</p>
+<p class="text-on-surface stream-text font-normal">This sandbox environment allows you to test how the Voxa Extension interacts with dynamic DOM elements and variable network conditions before deploying to your main browser instance.</p>
+<p class="inline-block w-[3px] h-8 bg-primary/80 align-middle shadow-[0_0_15px_rgba(208,188,255,0.8)]" id="streaming-cursor"></p>
+</div>
+</div>
+</section>
+<!-- Right: Real-time Overlay Result -->
+<section class="flex flex-col p-stack-lg relative overflow-y-auto bg-black/20">
+<div class="flex justify-between items-center mb-10">
+<h2 class="font-label-md text-label-md uppercase tracking-[0.2em] text-outline/80">Extension Overlay Preview</h2>
+<div class="flex gap-2">
+<button class="p-2 hover:bg-white/5 rounded-full text-outline hover:text-primary transition-all" title="Toggle Visibility">
+<span class="material-symbols-outlined text-[20px]">visibility</span>
+</button>
+<button class="p-2 hover:bg-white/5 rounded-full text-outline hover:text-primary transition-all">
+<span class="material-symbols-outlined text-[20px]">settings_input_component</span>
+</button>
+</div>
+</div>
+<div class="premium-card flex-1 p-8 overflow-y-auto">
+<div class="space-y-8 font-headline-md text-headline-md leading-[1.6] text-secondary-fixed-dim">
+<p class="opacity-30 font-light italic text-body-lg">वेब पेज पर अनुवाद का अनुकरण किया जा रहा है...</p>
+<p class="font-normal">यह सैंडबॉक्स वातावरण आपको यह परीक्षण करने की अनुमति देता है कि मुख्य ब्राउज़र इंस्टेंस पर तैनात करने से पहले वॉक्सा एक्सटेंशन गतिशील DOM तत्वों और परिवर्तनीय नेटवर्क स्थितियों के साथ कैसे इंटरैक्ट करता है।</p>
+</div>
+</div>
+</section>
+</div>
+<!-- Footer Workspace Controls -->
+<footer class="h-44 glass-panel border-t border-white/10 flex flex-col px-stack-lg py-stack-md z-20">
+<div class="flex-1 flex items-center justify-center gap-1 overflow-hidden" id="waveform-container">
+<!-- Visual Feedback for Extension Processing -->
+<div class="flex items-center gap-1.5 h-16">
+<div class="w-1 bg-primary h-8 rounded-full animate-pulse"></div>
+<div class="w-1 bg-primary h-12 rounded-full animate-pulse" style="animation-delay: 0.1s"></div>
+<div class="w-1 bg-secondary h-16 rounded-full animate-pulse" style="animation-delay: 0.2s"></div>
+<div class="w-1 bg-primary h-10 rounded-full animate-pulse" style="animation-delay: 0.3s"></div>
+<div class="w-1 bg-primary h-6 rounded-full animate-pulse" style="animation-delay: 0.4s"></div>
+</div>
+</div>
+<div class="flex justify-between items-center mt-4">
+<div class="flex items-center gap-6">
+<button class="group flex items-center gap-3 bg-white/5 border border-white/10 hover:border-primary/50 transition-all text-on-surface px-8 py-3 rounded-full font-label-md text-label-md backdrop-blur-sm">
+<span class="material-symbols-outlined text-[24px] group-hover:text-primary" style="font-variation-settings: 'FILL' 1;">tune</span>
+                        Test Injection Settings
+                    </button>
+<div class="h-10 w-px bg-white/10"></div>
+<div class="flex flex-col">
+<span class="text-[10px] text-outline/60 uppercase tracking-widest font-bold">Injected Elements</span>
+<span class="text-on-background font-mono text-sm">42 nodes translated</span>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<button class="w-12 h-12 flex items-center justify-center rounded-full bg-white/5 hover:bg-white/10 border border-white/10 transition-all text-on-surface-variant" title="Reset Sandbox">
+<span class="material-symbols-outlined text-[20px]">refresh</span>
+</button>
+<button class="bg-primary/20 border border-primary/50 text-primary hover:bg-primary/30 px-8 py-3 rounded-xl font-label-md text-label-md flex items-center gap-3 transition-all font-bold">
+<span class="material-symbols-outlined text-[20px]" style="font-variation-settings: 'FILL' 1;">sync</span>
+                        Re-sync Extension
+                    </button>
+</div>
+</div>
+</footer>
+</main>
+<!-- Shader Logic -->
+<script>
+        const canvas = document.getElementById('shader-canvas');
+        const gl = canvas.getContext('webgl');
+
+        if (gl) {
+            const vs = `
+                attribute vec4 position;
+                varying vec2 v_texCoord;
+                void main() {
+                    v_texCoord = position.xy * 0.5 + 0.5;
+                    gl_Position = position;
+                }
+            `;
+            const fs = `
+                precision highp float;
+                uniform float u_time;
+                uniform vec2 u_resolution;
+                uniform vec2 u_mouse;
+                varying vec2 v_texCoord;
+
+                void main() {
+                    vec2 uv = v_texCoord;
+                    vec2 m = u_mouse / u_resolution;
+                    
+                    float time = u_time * 0.15;
+                    vec3 color = vec3(0.04, 0.03, 0.06); 
+                    
+                    for(float i = 1.0; i < 4.0; i++){
+                        uv.x += 0.3 / i * sin(i * 3.0 * uv.y + time + m.x);
+                        uv.y += 0.3 / i * cos(i * 3.0 * uv.x + time + m.y);
+                    }
+                    
+                    float intensity = sin(uv.x + uv.y + time);
+                    vec3 accent = vec3(0.54, 0.36, 0.96); 
+                    color += accent * 0.12 * (1.0 / length(uv - 0.5));
+                    color *= 0.8 + 0.2 * intensity;
+
+                    gl_FragColor = vec4(color, 1.0);
+                }
+            `;
+
+            function createShader(gl, type, source) {
+                const shader = gl.createShader(type);
+                gl.shaderSource(shader, source);
+                gl.compileShader(shader);
+                return shader;
+            }
+
+            const program = gl.createProgram();
+            gl.attachShader(program, createShader(gl, gl.VERTEX_SHADER, vs));
+            gl.attachShader(program, createShader(gl, gl.FRAGMENT_SHADER, fs));
+            gl.linkProgram(program);
+            gl.useProgram(program);
+
+            const positionLoc = gl.getAttribLocation(program, "position");
+            const buffer = gl.createBuffer();
+            gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1, 1,-1, -1,1, -1,1, 1,-1, 1,1]), gl.STATIC_DRAW);
+            gl.enableVertexAttribArray(positionLoc);
+            gl.vertexAttribPointer(positionLoc, 2, gl.FLOAT, false, 0, 0);
+
+            const timeLoc = gl.getUniformLocation(program, "u_time");
+            const resLoc = gl.getUniformLocation(program, "u_resolution");
+            const mouseLoc = gl.getUniformLocation(program, "u_mouse");
+
+            let mouseX = 0, mouseY = 0;
+            window.addEventListener('mousemove', e => {
+                mouseX = e.clientX;
+                mouseY = e.clientY;
+            });
+
+            function render(time) {
+                canvas.width = window.innerWidth;
+                canvas.height = window.innerHeight;
+                gl.viewport(0, 0, canvas.width, canvas.height);
+                gl.uniform1f(timeLoc, time * 0.001);
+                gl.uniform2f(resLoc, canvas.</script></body></html>

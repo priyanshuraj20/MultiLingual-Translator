@@ -29,6 +29,7 @@ export default function WorkspacePage() {
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const [transcript, setTranscript] = useState("");
 
   const audioChunksRef = useRef<Blob[]>([]);
   const [copied, setCopied] = useState(false);
@@ -99,6 +100,7 @@ export default function WorkspacePage() {
 
       const data = await response.json();
       console.log("UPLOAD SUCCESSFULLY ", data);
+      setTranscript(data.transcript);
       alert("Audio Uploaded Successfully!");
     } catch (error) {
       console.error("Failed to upload audio binary:", error);
@@ -143,8 +145,7 @@ export default function WorkspacePage() {
                       timestamp: 14:22:01 | speaker: 01
                     </p>
                     <p className="text-base text-zinc-100 leading-relaxed">
-                      Bienvenidos a la conferencia de tecnología aplicada. Hoy
-                      exploraremos el futuro de la traducción neural.
+                      {transcript || "Strat Speaking..."}
                     </p>
                   </div>
                   {isRecording && (

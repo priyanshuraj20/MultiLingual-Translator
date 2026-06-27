@@ -1,8 +1,7 @@
+// app/workspace/page.tsx
 "use client";
 
 import React, { useRef, useState } from "react";
-
-// useRef used beacuse mediaRecoder changes internally no ui update needed    If we use useState, React will unnecessarily re-render.
 import Header from "@/components/Header";
 import Sidebar from "@/components/Sidebar";
 import Link from "next/link";
@@ -23,87 +22,130 @@ const waveformBars = [
 
 export default function WorkspacePage() {
   const [isRecording, setIsRecording] = useState(false);
-
   const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
-
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [isPlayingTTS, setIsPlayingTTS] = useState(false);
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-  const [transcript, setTranscript] = useState("");
-
   const audioChunksRef = useRef<Blob[]>([]);
+  const audioPlayerRef = useRef<HTMLAudioElement | null>(null);
   const [copied, setCopied] = useState(false);
+
+  // ✅ FIXED: Match backend response keys
+  const [transcript, setTranscript] = useState("");
   const [outputText, setOutputText] = useState(
     "Welcome to the applied technology conference. Today we will explore the future of neural translation.",
   );
+  const [ttsAudioUrl, setTtsAudioUrl] = useState<string | null>(null);
+  const [error, setError] = useState("");
 
   const handleCopy = () => {
     navigator.clipboard.writeText(outputText);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
+
+  // ========== RECORDING ==========
   const startRecording = async () => {
-    // 🎤 Allow Microphone?
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    const recorder = new MediaRecorder(stream);
+    setError("");
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const recorder = new MediaRecorder(stream);
 
-    // Store references
-    mediaRecorderRef.current = recorder;
-    audioChunksRef.current = [];
+      mediaRecorderRef.current = recorder;
+      audioChunksRef.current = [];
 
-    recorder.ondataavailable = (event) => {
-      audioChunksRef.current.push(event.data);
-    };
+      recorder.ondataavailable = (event) => {
+        audioChunksRef.current.push(event.data);
+      };
 
-    recorder.start();
-    setIsRecording(true);
+      recorder.onstop = async () => {
+        const blob = new Blob(audioChunksRef.current, { type: "audio/webm" });
+        setAudioBlob(blob);
+        const url = URL.createObjectURL(blob);
+        setAudioUrl(url);
+        await uploadAudio(blob);
+      };
+
+      recorder.start();
+      setIsRecording(true);
+    } catch (error) {
+      setError("Microphone access denied");
+      console.error(error);
+    }
   };
 
   const stopRecording = () => {
     const recorder = mediaRecorderRef.current;
     if (!recorder) return;
 
-    // 1. Tell the recorder what to do ONCE it stops tracking sound wave frequencies
-    recorder.onstop = async () => {
-      const blob = new Blob(audioChunksRef.current, { type: "audio/webm" });
-      setAudioBlob(blob);
-
-      const url = URL.createObjectURL(blob);
-      setAudioUrl(url);
-      console.log("Blob Ready", blob);
-
-      // 2. Trigger the parcel upload delivery task immediately
-      await uploadAudio(blob);
-    };
-
-    // 3. Actually trigger the physical hardware shutoff action
-    recorder.stop(); // recorder stops but microphone is still ON , Window will still show the microphone being used  so:
-    recorder.stream.getTracks().forEach((track) => track.stop()); //These releases the microphone hardware.
+    recorder.stop();
+    recorder.stream.getTracks().forEach((track) => track.stop());
     setIsRecording(false);
   };
 
-  // 4. Isolated asynchronous network parcel sender
+  // ========== UPLOAD & PROCESS AUDIO ==========
   const uploadAudio = async (blob: Blob) => {
+    setIsProcessing(true);
+    setError("");
+
     try {
       const formData = new FormData();
-      // Names must match your FastAPI argument parameter name exactly!
       formData.append("file", blob, "recording.webm");
 
-      const response = await fetch("http://127.0.0.1:8000/speech/transcribe", {
-        method: "POST",
-        body: formData, // Browser automatically injects multipart boundaries here!
-      });
+      console.log("📤 Uploading audio...");
+
+      const response = await fetch(
+        "http://localhost:8000/speech/translate-and-speak",
+        {
+          method: "POST",
+          body: formData,
+        },
+      );
 
       if (!response.ok) {
         throw new Error(`HTTP error! Status: ${response.status}`);
       }
 
       const data = await response.json();
-      console.log("UPLOAD SUCCESSFULLY ", data);
-      setTranscript(data.transcript);
-      alert("Audio Uploaded Successfully!");
+      console.log("✅ Response received:", data);
+
+      // ✅ FIXED: Use correct keys
+      if (data.success) {
+        setTranscript(data.transcript || "");
+        setOutputText(data.translated_text || "");
+        setTtsAudioUrl(data.output_audio_url || null);
+      } else {
+        setError("Processing failed");
+      }
     } catch (error) {
-      console.error("Failed to upload audio binary:", error);
+      console.error("Upload error:", error);
+      setError(
+        `Error: ${error instanceof Error ? error.message : "Unknown error"}`,
+      );
+      setOutputText("Error: Could not retrieve translation from server.");
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  // ========== PLAY TTS AUDIO ==========
+  const playTTSAudio = () => {
+    if (!ttsAudioUrl) {
+      setError("No audio to play");
+      return;
+    }
+
+    try {
+      const audio = new Audio(ttsAudioUrl);
+      setIsPlayingTTS(true);
+      audio.onended = () => setIsPlayingTTS(false);
+      audio.play().catch((e) => {
+        setError(`Playback failed: ${e.message}`);
+      });
+    } catch (error) {
+      setError("Failed to play audio");
     }
   };
 
@@ -115,9 +157,22 @@ export default function WorkspacePage() {
 
         {/* Workspace Main Area */}
         <div className="flex-1 flex flex-col relative bg-background overflow-hidden">
+          {/* Error Alert */}
+          {error && (
+            <div className="bg-red-900/20 border border-red-500 text-red-300 px-6 py-3 flex items-center justify-between">
+              <span>⚠️ {error}</span>
+              <button
+                onClick={() => setError("")}
+                className="text-red-300 hover:text-red-200"
+              >
+                ✕
+              </button>
+            </div>
+          )}
+
           {/* Main Grid Panels */}
           <div className="flex-1 grid grid-cols-12 gap-6 p-6 overflow-hidden pb-16 md:pb-6">
-            {/* Input Panel (Spanish) */}
+            {/* Input Panel */}
             <div className="col-span-12 md:col-span-6 flex flex-col gap-6 h-full overflow-hidden">
               <div className="flex-1 flex flex-col border border-[#ffffff1a] bg-[#111111] overflow-hidden">
                 <div className="flex items-center justify-between p-3 border-b border-[#ffffff1a] bg-black/50 select-none">
@@ -128,39 +183,47 @@ export default function WorkspacePage() {
                     <span
                       className={`w-1.5 h-1.5 rounded-full ${
                         isRecording
-                          ? "bg-primary animate-pulse-recording"
-                          : "bg-zinc-600"
+                          ? "bg-primary animate-pulse"
+                          : isProcessing
+                            ? "bg-yellow-500 animate-pulse"
+                            : "bg-zinc-600"
                       }`}
                     ></span>
                   </div>
                   <div className="font-mono text-[10px] text-primary uppercase">
-                    Recording_State: {isRecording ? "Active" : "Standby"}
+                    {isRecording
+                      ? "Recording..."
+                      : isProcessing
+                        ? "Processing..."
+                        : "Standby"}
                   </div>
                 </div>
 
                 {/* Stream Transcript */}
                 <div className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar">
-                  <div className="border-l border-primary/30 pl-4 py-2">
-                    <p className="font-mono text-[10px] text-primary/60 mb-1">
-                      timestamp: 14:22:01 | speaker: 01
-                    </p>
-                    <p className="text-base text-zinc-100 leading-relaxed">
-                      {transcript || "Strat Speaking..."}
-                    </p>
-                  </div>
-                  {isRecording && (
-                    <div className="border-l border-white/5 pl-4 py-2">
-                      <p className="font-mono text-[10px] text-zinc-600 mb-1">
-                        timestamp: 14:22:05 | speaker: 02
+                  {transcript ? (
+                    <div className="border-l border-primary/30 pl-4 py-2">
+                      <p className="font-mono text-[10px] text-primary/60 mb-1">
+                        transcription | language: en-US
                       </p>
+                      <p className="text-base text-zinc-100 leading-relaxed">
+                        {transcript}
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="border-l border-white/5 pl-4 py-2">
                       <p className="text-base text-zinc-500 italic">
-                        Buffer streaming active...
+                        {isRecording
+                          ? "🎤 Listening..."
+                          : isProcessing
+                            ? "⏳ Processing audio..."
+                            : "Start speaking..."}
                       </p>
                     </div>
                   )}
                 </div>
 
-                {/* Waveform Visualization area */}
+                {/* Waveform Visualization */}
                 <div className="h-20 bg-black/30 border-t border-[#ffffff1a] flex items-center justify-center gap-1.5 px-4">
                   {waveformBars.map((bar, i) => (
                     <div
@@ -168,74 +231,68 @@ export default function WorkspacePage() {
                       style={{
                         height: isRecording ? bar.height : "8px",
                         animationDelay: bar.delay,
-                        animationPlayState: isRecording ? "running" : "paused",
                       }}
-                      className={
+                      className={`w-1 rounded-full transition-all ${
                         isRecording
-                          ? "w-1 bg-primary rounded-full animate-waveform-jump"
-                          : "w-1 bg-zinc-700 rounded-full"
-                      }
+                          ? "bg-primary/70 animate-[pulse_0.8s_ease-in-out_infinite]"
+                          : "bg-zinc-700/50"
+                      }`}
                     ></div>
                   ))}
                 </div>
-              </div>
 
-              {/* Mic Action Control */}
-              <div className="flex flex-col items-center justify-center shrink-0">
-                <button
-                  onClick={() => {
-                    if (isRecording) {
-                      stopRecording();
-                    } else {
-                      startRecording();
-                    }
-                  }}
-                  className={`group p-4 border rounded-full transition-all ${
-                    isRecording
-                      ? "border-primary/45 bg-primary/10 hover:bg-primary/20 text-primary"
-                      : "border-white/10 hover:border-white/20 text-zinc-500 bg-transparent"
-                  }`}
-                  title={isRecording ? "Mute Microphone" : "Unmute Microphone"}
-                >
-                  <span className="material-symbols-outlined text-3xl font-light">
-                    {isRecording ? "mic" : "mic_off"}
-                  </span>
-                </button>
-                {audioUrl && <audio controls src={audioUrl} className="mt-4" />}
+                {/* Recording Controls */}
+                <div className="p-4 border-t border-[#ffffff1a] bg-black/30 flex gap-4">
+                  <button
+                    onClick={isRecording ? stopRecording : startRecording}
+                    disabled={isProcessing}
+                    className={`group p-4 border rounded-full transition-all ${
+                      isRecording
+                        ? "border-primary/45 bg-primary/10 hover:bg-primary/20 text-primary"
+                        : "border-white/10 hover:border-white/20 text-zinc-500 bg-transparent disabled:opacity-50"
+                    }`}
+                  >
+                    <span className="text-2xl font-light">
+                      {isRecording ? "🎙️" : "🎤"}
+                    </span>
+                  </button>
+
+                  {/* Audio Playback */}
+                  {audioUrl && (
+                    <audio
+                      ref={audioPlayerRef}
+                      src={audioUrl}
+                      controls
+                      className="flex-1 h-12 rounded bg-black/50"
+                    />
+                  )}
+                </div>
               </div>
             </div>
 
-            {/* Output Panel (English) */}
+            {/* Output Panel */}
             <div className="col-span-12 md:col-span-6 flex flex-col gap-6 h-full overflow-hidden">
               <div className="flex-1 flex flex-col border border-[#ffffff1a] bg-[#111111] overflow-hidden">
                 <div className="flex items-center justify-between p-3 border-b border-[#ffffff1a] bg-black/50 select-none">
                   <div className="flex items-center gap-2">
                     <span className="font-mono text-[11px] uppercase tracking-tighter text-zinc-400">
-                      [02] Output_Buffer
+                      [02] Output_Buffer (Hindi)
                     </span>
                   </div>
                   <div className="flex gap-4">
                     <button
                       onClick={handleCopy}
                       className="hover:text-primary transition-colors text-zinc-400 focus:outline-none flex items-center gap-1"
-                      title="Copy Output"
                     >
-                      <span className="material-symbols-outlined text-[18px]">
-                        {copied ? "check" : "content_copy"}
-                      </span>
+                      <span className="text-base">{copied ? "✓" : "📋"}</span>
                       {copied && (
                         <span className="text-[10px] font-mono text-primary">
                           Copied
                         </span>
                       )}
                     </button>
-                    <button
-                      className="hover:text-primary transition-colors text-zinc-400"
-                      title="Save Output"
-                    >
-                      <span className="material-symbols-outlined text-[18px]">
-                        save
-                      </span>
+                    <button className="hover:text-primary transition-colors text-zinc-400">
+                      💾
                     </button>
                   </div>
                 </div>
@@ -244,13 +301,29 @@ export default function WorkspacePage() {
                 <div className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar">
                   <div className="bg-white/5 p-4 border border-white/10">
                     <p className="font-mono text-[10px] text-zinc-400 mb-2">
-                      TARGET_LANG: EN-US (TRANSFORMER_V4)
+                      TARGET: HI-IN (NLLB-200-DISTILLED)
                     </p>
                     <p className="text-base text-zinc-100 leading-relaxed">
                       {outputText}
                     </p>
                   </div>
                 </div>
+
+                {/* TTS Audio Player */}
+                {ttsAudioUrl && (
+                  <div className="p-4 border-t border-[#ffffff1a] bg-black/30">
+                    <p className="font-mono text-[10px] text-zinc-400 mb-3">
+                      🔊 GENERATED SPEECH (Hindi)
+                    </p>
+                    <audio
+                      src={ttsAudioUrl}
+                      controls
+                      className="w-full h-10 rounded"
+                      onPlay={() => setIsPlayingTTS(true)}
+                      onPause={() => setIsPlayingTTS(false)}
+                    />
+                  </div>
+                )}
 
                 {/* Confidence Meter */}
                 <div className="p-4 border-t border-[#ffffff1a] bg-black/30 select-none">
@@ -259,11 +332,11 @@ export default function WorkspacePage() {
                       Inference_Confidence
                     </span>
                     <span className="font-mono text-[10px] text-primary">
-                      98.42%
+                      95.00%
                     </span>
                   </div>
                   <div className="w-full h-1 bg-white/10 rounded-none overflow-hidden">
-                    <div className="h-full bg-primary w-[98.42%] transition-all duration-500"></div>
+                    <div className="h-full bg-primary w-[95%] transition-all duration-500"></div>
                   </div>
                 </div>
               </div>
@@ -271,43 +344,48 @@ export default function WorkspacePage() {
               {/* Action Buttons */}
               <div className="flex justify-end gap-2 shrink-0">
                 <button
-                  onClick={() => setOutputText("")}
-                  className="font-mono text-[10px] uppercase tracking-widest px-4 py-2 border border-[#ffffff1a] hover:border-white transition-colors"
+                  onClick={() => {
+                    setOutputText("");
+                    setTranscript("");
+                    setTtsAudioUrl(null);
+                  }}
+                  className="font-mono text-[10px] uppercase tracking-widest px-4 py-2 border border-[#ffffff1a] hover:border-white transition-colors disabled:opacity-50"
+                  disabled={isProcessing}
                 >
                   Clear_Cache
                 </button>
-                <button className="font-mono text-[10px] uppercase tracking-widest px-6 py-2 bg-white text-black font-bold hover:bg-zinc-200 transition-colors">
-                  Execute_TTS
+                <button
+                  onClick={playTTSAudio}
+                  disabled={!ttsAudioUrl || isPlayingTTS}
+                  className="font-mono text-[10px] uppercase tracking-widest px-6 py-2 bg-primary text-black font-bold hover:bg-primary/80 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isPlayingTTS ? "Playing..." : "🔊 Play_TTS"}
                 </button>
               </div>
             </div>
           </div>
 
-          {/* Nominal Status Footer */}
+          {/* Status Footer */}
           <footer className="h-10 bg-black border-t border-[#ffffff1a] w-full flex items-center px-6 justify-between select-none absolute bottom-0 md:relative shrink-0">
             <div className="flex items-center gap-4">
               <div className="flex items-center gap-2 px-2 py-0.5 border border-[#ffffff1a] rounded bg-zinc-900/50">
                 <span className="font-mono text-[9px] text-zinc-500 uppercase">
-                  Lang
+                  Source
                 </span>
-                <span className="font-mono text-[10px] text-white">
-                  ES-LATAM
-                </span>
+                <span className="font-mono text-[10px] text-white">EN-US</span>
               </div>
               <div className="flex items-center gap-2 px-2 py-0.5 border border-[#ffffff1a] rounded bg-zinc-900/50">
                 <span className="font-mono text-[9px] text-zinc-500 uppercase">
-                  Latency
+                  Target
                 </span>
-                <span className="font-mono text-[10px] text-primary">
-                  120ms
-                </span>
+                <span className="font-mono text-[10px] text-white">HI-IN</span>
               </div>
               <div className="hidden lg:flex items-center gap-2 px-2 py-0.5 border border-[#ffffff1a] rounded bg-zinc-900/50">
                 <span className="font-mono text-[9px] text-zinc-500 uppercase">
                   Engine
                 </span>
                 <span className="font-mono text-[10px] text-white">
-                  WHISPER_V3_L
+                  WHISPER + NLLB
                 </span>
               </div>
             </div>
@@ -315,13 +393,7 @@ export default function WorkspacePage() {
               <div className="flex items-center gap-1.5">
                 <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse"></span>
                 <span className="font-mono text-[10px] text-zinc-400 uppercase">
-                  System_Nominal
-                </span>
-              </div>
-              <div className="h-4 w-px bg-white/10"></div>
-              <div className="w-6 h-6 rounded-sm bg-primary/20 border border-primary/40 flex items-center justify-center">
-                <span className="font-mono text-[8px] font-bold text-primary select-none">
-                  AI
+                  System_Ready
                 </span>
               </div>
             </div>
@@ -329,42 +401,28 @@ export default function WorkspacePage() {
         </div>
       </div>
 
-      {/* Mobile navigation bottom bar */}
+      {/* Mobile Navigation */}
       <div className="md:hidden fixed bottom-0 left-0 w-full bg-[#111111] border-t border-white/10 flex justify-around items-center h-14 z-50">
         <Link
           href="/workspace"
           className="flex flex-col items-center gap-0.5 text-primary"
         >
-          <span className="material-symbols-outlined text-[20px]">mic</span>
+          <span>🎤</span>
           <span className="text-[10px] font-medium">Workspace</span>
         </Link>
         <Link
           href="/history"
           className="flex flex-col items-center gap-0.5 text-zinc-500 hover:text-white"
         >
-          <span
-            className="material-symbols-outlined text-[20px]"
-            style={{ fontVariationSettings: "'FILL' 1" }}
-          >
-            history
-          </span>
+          <span>📋</span>
           <span className="text-[10px] font-medium">History</span>
         </Link>
         <Link
           href="/technology"
           className="flex flex-col items-center gap-0.5 text-zinc-500 hover:text-white"
         >
-          <span className="material-symbols-outlined text-[20px]">
-            neurology
-          </span>
+          <span>🧠</span>
           <span className="text-[10px] font-medium">Tech</span>
-        </Link>
-        <Link
-          href="/design-system"
-          className="flex flex-col items-center gap-0.5 text-zinc-500 hover:text-white"
-        >
-          <span className="material-symbols-outlined text-[20px]">palette</span>
-          <span className="text-[10px] font-medium">Design</span>
         </Link>
       </div>
     </div>

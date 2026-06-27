@@ -42,17 +42,12 @@ export default function WorkspacePage() {
     setTimeout(() => setCopied(false), 2000);
   };
   const startRecording = async () => {
-    //🎤 Allow Microphone?
-    const stream = await navigator.mediaDevices.getUserMedia({
-      audio: true,
-    });
-
+    // 🎤 Allow Microphone?
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
     const recorder = new MediaRecorder(stream);
 
-    //Store it
+    // Store references
     mediaRecorderRef.current = recorder;
-
-    //clear old chunks
     audioChunksRef.current = [];
 
     recorder.ondataavailable = (event) => {
@@ -60,33 +55,56 @@ export default function WorkspacePage() {
     };
 
     recorder.start();
-
     setIsRecording(true);
   };
 
   const stopRecording = () => {
     const recorder = mediaRecorderRef.current;
-
     if (!recorder) return;
 
-    recorder.onstop = () => {
-      const blob = new Blob(audioChunksRef.current, {
-        type: "audio/webm",
-      });
-
+    // 1. Tell the recorder what to do ONCE it stops tracking sound wave frequencies
+    recorder.onstop = async () => {
+      const blob = new Blob(audioChunksRef.current, { type: "audio/webm" });
       setAudioBlob(blob);
 
       const url = URL.createObjectURL(blob);
-
       setAudioUrl(url);
-
       console.log("Blob Ready", blob);
+
+      // 2. Trigger the parcel upload delivery task immediately
+      await uploadAudio(blob);
     };
 
-    recorder.stop();
-
+    // 3. Actually trigger the physical hardware shutoff action
+    recorder.stop(); // recorder stops but microphone is still ON , Window will still show the microphone being used  so:
+    recorder.stream.getTracks().forEach((track) => track.stop()); //These releases the microphone hardware.
     setIsRecording(false);
   };
+
+  // 4. Isolated asynchronous network parcel sender
+  const uploadAudio = async (blob: Blob) => {
+    try {
+      const formData = new FormData();
+      // Names must match your FastAPI argument parameter name exactly!
+      formData.append("file", blob, "recording.webm");
+
+      const response = await fetch("http://127.0.0.1:8000/speech/transcribe", {
+        method: "POST",
+        body: formData, // Browser automatically injects multipart boundaries here!
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! Status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      console.log("UPLOAD SUCCESSFULLY ", data);
+      alert("Audio Uploaded Successfully!");
+    } catch (error) {
+      console.error("Failed to upload audio binary:", error);
+    }
+  };
+
   return (
     <div className="flex flex-col h-screen overflow-hidden bg-background text-on-surface">
       <Header />
@@ -182,9 +200,7 @@ export default function WorkspacePage() {
                     {isRecording ? "mic" : "mic_off"}
                   </span>
                 </button>
-                {audioUrl && (
-                  <audio controls src={audioUrl} className="mt-4" />
-                )}
+                {audioUrl && <audio controls src={audioUrl} className="mt-4" />}
               </div>
             </div>
 

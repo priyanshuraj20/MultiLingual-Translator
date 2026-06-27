@@ -1,6 +1,8 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
+
+// useRef used beacuse mediaRecoder changes internally no ui update needed    If we use useState, React will unnecessarily re-render.
 import Header from "@/components/Header";
 import Sidebar from "@/components/Sidebar";
 import Link from "next/link";
@@ -20,10 +22,18 @@ const waveformBars = [
 ];
 
 export default function WorkspacePage() {
-  const [isRecording, setIsRecording] = useState(true);
+  const [isRecording, setIsRecording] = useState(false);
+
+  const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
+
+  const [audioUrl, setAudioUrl] = useState<string | null>(null);
+
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+
+  const audioChunksRef = useRef<Blob[]>([]);
   const [copied, setCopied] = useState(false);
   const [outputText, setOutputText] = useState(
-    "Welcome to the applied technology conference. Today we will explore the future of neural translation."
+    "Welcome to the applied technology conference. Today we will explore the future of neural translation.",
   );
 
   const handleCopy = () => {
@@ -31,7 +41,52 @@ export default function WorkspacePage() {
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
+  const startRecording = async () => {
+    //🎤 Allow Microphone?
+    const stream = await navigator.mediaDevices.getUserMedia({
+      audio: true,
+    });
 
+    const recorder = new MediaRecorder(stream);
+
+    //Store it
+    mediaRecorderRef.current = recorder;
+
+    //clear old chunks
+    audioChunksRef.current = [];
+
+    recorder.ondataavailable = (event) => {
+      audioChunksRef.current.push(event.data);
+    };
+
+    recorder.start();
+
+    setIsRecording(true);
+  };
+
+  const stopRecording = () => {
+    const recorder = mediaRecorderRef.current;
+
+    if (!recorder) return;
+
+    recorder.onstop = () => {
+      const blob = new Blob(audioChunksRef.current, {
+        type: "audio/webm",
+      });
+
+      setAudioBlob(blob);
+
+      const url = URL.createObjectURL(blob);
+
+      setAudioUrl(url);
+
+      console.log("Blob Ready", blob);
+    };
+
+    recorder.stop();
+
+    setIsRecording(false);
+  };
   return (
     <div className="flex flex-col h-screen overflow-hidden bg-background text-on-surface">
       <Header />
@@ -42,7 +97,6 @@ export default function WorkspacePage() {
         <div className="flex-1 flex flex-col relative bg-background overflow-hidden">
           {/* Main Grid Panels */}
           <div className="flex-1 grid grid-cols-12 gap-6 p-6 overflow-hidden pb-16 md:pb-6">
-            
             {/* Input Panel (Spanish) */}
             <div className="col-span-12 md:col-span-6 flex flex-col gap-6 h-full overflow-hidden">
               <div className="flex-1 flex flex-col border border-[#ffffff1a] bg-[#111111] overflow-hidden">
@@ -53,7 +107,9 @@ export default function WorkspacePage() {
                     </span>
                     <span
                       className={`w-1.5 h-1.5 rounded-full ${
-                        isRecording ? "bg-primary animate-pulse-recording" : "bg-zinc-600"
+                        isRecording
+                          ? "bg-primary animate-pulse-recording"
+                          : "bg-zinc-600"
                       }`}
                     ></span>
                   </div>
@@ -69,7 +125,8 @@ export default function WorkspacePage() {
                       timestamp: 14:22:01 | speaker: 01
                     </p>
                     <p className="text-base text-zinc-100 leading-relaxed">
-                      Bienvenidos a la conferencia de tecnología aplicada. Hoy exploraremos el futuro de la traducción neural.
+                      Bienvenidos a la conferencia de tecnología aplicada. Hoy
+                      exploraremos el futuro de la traducción neural.
                     </p>
                   </div>
                   {isRecording && (
@@ -94,16 +151,26 @@ export default function WorkspacePage() {
                         animationDelay: bar.delay,
                         animationPlayState: isRecording ? "running" : "paused",
                       }}
-                      className={isRecording ? "w-1 bg-primary rounded-full animate-waveform-jump" : "w-1 bg-zinc-700 rounded-full"}
+                      className={
+                        isRecording
+                          ? "w-1 bg-primary rounded-full animate-waveform-jump"
+                          : "w-1 bg-zinc-700 rounded-full"
+                      }
                     ></div>
                   ))}
                 </div>
               </div>
 
               {/* Mic Action Control */}
-              <div className="flex justify-center shrink-0">
+              <div className="flex flex-col items-center justify-center shrink-0">
                 <button
-                  onClick={() => setIsRecording(!isRecording)}
+                  onClick={() => {
+                    if (isRecording) {
+                      stopRecording();
+                    } else {
+                      startRecording();
+                    }
+                  }}
                   className={`group p-4 border rounded-full transition-all ${
                     isRecording
                       ? "border-primary/45 bg-primary/10 hover:bg-primary/20 text-primary"
@@ -115,6 +182,9 @@ export default function WorkspacePage() {
                     {isRecording ? "mic" : "mic_off"}
                   </span>
                 </button>
+                {audioUrl && (
+                  <audio controls src={audioUrl} className="mt-4" />
+                )}
               </div>
             </div>
 
@@ -136,10 +206,19 @@ export default function WorkspacePage() {
                       <span className="material-symbols-outlined text-[18px]">
                         {copied ? "check" : "content_copy"}
                       </span>
-                      {copied && <span className="text-[10px] font-mono text-primary">Copied</span>}
+                      {copied && (
+                        <span className="text-[10px] font-mono text-primary">
+                          Copied
+                        </span>
+                      )}
                     </button>
-                    <button className="hover:text-primary transition-colors text-zinc-400" title="Save Output">
-                      <span className="material-symbols-outlined text-[18px]">save</span>
+                    <button
+                      className="hover:text-primary transition-colors text-zinc-400"
+                      title="Save Output"
+                    >
+                      <span className="material-symbols-outlined text-[18px]">
+                        save
+                      </span>
                     </button>
                   </div>
                 </div>
@@ -162,7 +241,9 @@ export default function WorkspacePage() {
                     <span className="font-mono text-[10px] uppercase text-zinc-400">
                       Inference_Confidence
                     </span>
-                    <span className="font-mono text-[10px] text-primary">98.42%</span>
+                    <span className="font-mono text-[10px] text-primary">
+                      98.42%
+                    </span>
                   </div>
                   <div className="w-full h-1 bg-white/10 rounded-none overflow-hidden">
                     <div className="h-full bg-primary w-[98.42%] transition-all duration-500"></div>
@@ -183,33 +264,48 @@ export default function WorkspacePage() {
                 </button>
               </div>
             </div>
-
           </div>
 
           {/* Nominal Status Footer */}
           <footer className="h-10 bg-black border-t border-[#ffffff1a] w-full flex items-center px-6 justify-between select-none absolute bottom-0 md:relative shrink-0">
             <div className="flex items-center gap-4">
               <div className="flex items-center gap-2 px-2 py-0.5 border border-[#ffffff1a] rounded bg-zinc-900/50">
-                <span className="font-mono text-[9px] text-zinc-500 uppercase">Lang</span>
-                <span className="font-mono text-[10px] text-white">ES-LATAM</span>
+                <span className="font-mono text-[9px] text-zinc-500 uppercase">
+                  Lang
+                </span>
+                <span className="font-mono text-[10px] text-white">
+                  ES-LATAM
+                </span>
               </div>
               <div className="flex items-center gap-2 px-2 py-0.5 border border-[#ffffff1a] rounded bg-zinc-900/50">
-                <span className="font-mono text-[9px] text-zinc-500 uppercase">Latency</span>
-                <span className="font-mono text-[10px] text-primary">120ms</span>
+                <span className="font-mono text-[9px] text-zinc-500 uppercase">
+                  Latency
+                </span>
+                <span className="font-mono text-[10px] text-primary">
+                  120ms
+                </span>
               </div>
               <div className="hidden lg:flex items-center gap-2 px-2 py-0.5 border border-[#ffffff1a] rounded bg-zinc-900/50">
-                <span className="font-mono text-[9px] text-zinc-500 uppercase">Engine</span>
-                <span className="font-mono text-[10px] text-white">WHISPER_V3_L</span>
+                <span className="font-mono text-[9px] text-zinc-500 uppercase">
+                  Engine
+                </span>
+                <span className="font-mono text-[10px] text-white">
+                  WHISPER_V3_L
+                </span>
               </div>
             </div>
             <div className="flex items-center gap-4">
               <div className="flex items-center gap-1.5">
                 <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse"></span>
-                <span className="font-mono text-[10px] text-zinc-400 uppercase">System_Nominal</span>
+                <span className="font-mono text-[10px] text-zinc-400 uppercase">
+                  System_Nominal
+                </span>
               </div>
               <div className="h-4 w-px bg-white/10"></div>
               <div className="w-6 h-6 rounded-sm bg-primary/20 border border-primary/40 flex items-center justify-center">
-                <span className="font-mono text-[8px] font-bold text-primary select-none">AI</span>
+                <span className="font-mono text-[8px] font-bold text-primary select-none">
+                  AI
+                </span>
               </div>
             </div>
           </footer>
@@ -218,21 +314,38 @@ export default function WorkspacePage() {
 
       {/* Mobile navigation bottom bar */}
       <div className="md:hidden fixed bottom-0 left-0 w-full bg-[#111111] border-t border-white/10 flex justify-around items-center h-14 z-50">
-        <Link href="/workspace" className="flex flex-col items-center gap-0.5 text-primary">
+        <Link
+          href="/workspace"
+          className="flex flex-col items-center gap-0.5 text-primary"
+        >
           <span className="material-symbols-outlined text-[20px]">mic</span>
           <span className="text-[10px] font-medium">Workspace</span>
         </Link>
-        <Link href="/history" className="flex flex-col items-center gap-0.5 text-zinc-500 hover:text-white">
-          <span className="material-symbols-outlined text-[20px]" style={{ fontVariationSettings: "'FILL' 1" }}>
+        <Link
+          href="/history"
+          className="flex flex-col items-center gap-0.5 text-zinc-500 hover:text-white"
+        >
+          <span
+            className="material-symbols-outlined text-[20px]"
+            style={{ fontVariationSettings: "'FILL' 1" }}
+          >
             history
           </span>
           <span className="text-[10px] font-medium">History</span>
         </Link>
-        <Link href="/technology" className="flex flex-col items-center gap-0.5 text-zinc-500 hover:text-white">
-          <span className="material-symbols-outlined text-[20px]">neurology</span>
+        <Link
+          href="/technology"
+          className="flex flex-col items-center gap-0.5 text-zinc-500 hover:text-white"
+        >
+          <span className="material-symbols-outlined text-[20px]">
+            neurology
+          </span>
           <span className="text-[10px] font-medium">Tech</span>
         </Link>
-        <Link href="/design-system" className="flex flex-col items-center gap-0.5 text-zinc-500 hover:text-white">
+        <Link
+          href="/design-system"
+          className="flex flex-col items-center gap-0.5 text-zinc-500 hover:text-white"
+        >
           <span className="material-symbols-outlined text-[20px]">palette</span>
           <span className="text-[10px] font-medium">Design</span>
         </Link>

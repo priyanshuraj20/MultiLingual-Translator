@@ -1,0 +1,281 @@
+/* content.css - Voxa Extension Floating Widget styling */
+
+/* Floating Widget Container (Glassmorphic Obsidian flux styling) */
+.voxa-widget-container {
+  position: fixed;
+  bottom: 30px;
+  right: 30px;
+  width: 380px;
+  max-height: 240px;
+  min-height: 120px;
+  background: rgba(12, 10, 16, 0.45) !important; /* Premium Transparent */
+  backdrop-filter: blur(30px) !important;
+  -webkit-backdrop-filter: blur(30px) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  border-radius: 16px !important;
+  box-shadow: 0 8px 32px 0 rgba(12, 10, 16, 0.3), 
+              inset 0 0 0 1px rgba(255, 255, 255, 0.03),
+              0 0 30px rgba(139, 92, 246, 0.06) !important;
+  z-index: 9999999999 !important;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif !important;
+  color: #e7e0ed !important;
+  box-sizing: border-box !important;
+  transition: opacity 0.3s ease, transform 0.2s cubic-bezier(0.25, 0.8, 0.25, 1) !important;
+  user-select: none !important;
+}
+
+.voxa-widget-container * {
+  box-sizing: border-box !important;
+  margin: 0;
+  padding: 0;
+}
+
+.voxa-widget-container.voxa-minimized {
+  width: 220px !important;
+  min-height: 50px !important;
+  max-height: 50px !important;
+  bottom: 30px !important;
+}
+
+/* Header & Drag Handle */
+.voxa-widget-header {
+  height: 38px;
+  background: rgba(255, 255, 255, 0.01) !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04) !important;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 12px !important;
+  cursor: move !important;
+}
+
+.voxa-widget-logo-area {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.voxa-widget-logo-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #8b5cf6;
+  box-shadow: 0 0 8px #8b5cf6;
+  position: relative;
+}
+
+.voxa-widget-logo-dot.voxa-recording {
+  background: #ff5c5c !important;
+  box-shadow: 0 0 10px #ff5c5c !important;
+  animation: voxa-dot-pulse 1.2s infinite alternate !important;
+}
+
+.voxa-widget-title {
+  font-size: 10px !important;
+  font-weight: 800 !important;
+  letter-spacing: 0.12em !important;
+  text-transform: uppercase !important;
+  color: rgba(231, 224, 237, 0.85) !important;
+}
+
+.voxa-widget-controls {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.voxa-widget-btn {
+  background: transparent !important;
+  border: none !important;
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  cursor: pointer !important;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(231, 224, 237, 0.6) !important;
+  transition: all 0.2s ease !important;
+}
+
+.voxa-widget-btn:hover {
+  background: rgba(255, 255, 255, 0.06) !important;
+  color: #fff !important;
+}
+
+/* Mic Active Glow */
+.voxa-widget-btn#voxa-btn-mic.voxa-active-mic {
+  color: #ff5c5c !important;
+  background: rgba(255, 92, 92, 0.08) !important;
+  animation: voxa-mic-pulse 1.5s infinite alternate !important;
+}
+
+/* Subtitle Content Panels */
+.voxa-widget-body {
+  flex: 1;
+  padding: 12px 14px !important;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  overflow-y: auto !important;
+}
+
+.voxa-widget-container.voxa-minimized .voxa-widget-body {
+  display: none !important;
+}
+
+/* Scrolling Text Areas */
+.voxa-text-section {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.voxa-section-label {
+  font-size: 8px !important;
+  font-weight: 700 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.12em !important;
+  color: rgba(208, 188, 255, 0.65) !important;
+}
+
+.voxa-transcript-box {
+  font-size: 13px !important;
+  line-height: 1.4 !important;
+  color: rgba(231, 224, 237, 0.7) !important;
+  font-weight: 400 !important;
+  max-height: 50px;
+  overflow-y: auto;
+}
+
+.voxa-translation-box {
+  background: rgba(139, 92, 246, 0.03) !important;
+  border-left: 2px solid #8b5cf6 !important;
+  padding: 6px 8px !important;
+  border-radius: 4px !important;
+  font-size: 14px !important;
+  line-height: 1.45 !important;
+  color: #ffffff !important;
+  font-weight: 500 !important;
+  max-height: 70px;
+  overflow-y: auto;
+  box-shadow: inset 0 0 10px rgba(139, 92, 246, 0.01) !important;
+}
+
+.voxa-placeholder-msg {
+  font-style: italic !important;
+  color: rgba(231, 224, 237, 0.3) !important;
+}
+
+/* Audio Wave Visualizer Area */
+.voxa-widget-footer {
+  height: 32px;
+  padding: 0 14px !important;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-top: 1px solid rgba(255, 255, 255, 0.03) !important;
+  background: rgba(0, 0, 0, 0.1) !important;
+}
+
+.voxa-widget-container.voxa-minimized .voxa-widget-footer {
+  flex: 1 !important;
+  border-top: none !important;
+  height: auto !important;
+  padding: 0 10px !important;
+}
+
+.voxa-status-label {
+  font-size: 9px !important;
+  font-family: monospace !important;
+  color: rgba(208, 188, 255, 0.7) !important;
+  text-transform: uppercase;
+}
+
+.voxa-wave-visualizer {
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 16px;
+}
+
+.voxa-wave-bar {
+  width: 2px;
+  height: 3px;
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 1px;
+  transition: height 0.15s ease, background-color 0.3s ease !important;
+}
+
+.voxa-wave-active .voxa-wave-bar {
+  background: #8b5cf6 !important;
+  box-shadow: 0 0 4px rgba(139, 92, 246, 0.4) !important;
+}
+
+/* Gesture Warning Tooltip Card */
+.voxa-tooltip {
+  position: absolute;
+  top: -45px;
+  right: 10px;
+  background: rgba(20, 10, 30, 0.9) !important;
+  border: 1px solid rgba(139, 92, 246, 0.3) !important;
+  color: #fff !important;
+  padding: 6px 10px !important;
+  border-radius: 6px !important;
+  font-size: 10px !important;
+  white-space: nowrap !important;
+  z-index: 10000000000 !important;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.5) !important;
+  pointer-events: none !important;
+  opacity: 0;
+  transform: translateY(5px);
+  transition: all 0.25s cubic-bezier(0.25, 0.8, 0.25, 1) !important;
+  backdrop-filter: blur(5px) !important;
+}
+
+.voxa-tooltip.voxa-tooltip-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Custom Scrollbars */
+.voxa-widget-container *::-webkit-scrollbar {
+  width: 3px;
+}
+.voxa-widget-container *::-webkit-scrollbar-track {
+  background: transparent;
+}
+.voxa-widget-container *::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 2px;
+}
+
+/* Animations */
+@keyframes voxa-dot-pulse {
+  0% { opacity: 0.6; transform: scale(0.9); }
+  100% { opacity: 1; transform: scale(1.15); }
+}
+
+@keyframes voxa-mic-pulse {
+  0% { box-shadow: 0 0 0px rgba(255, 92, 92, 0); }
+  100% { box-shadow: 0 0 8px rgba(255, 92, 92, 0.3); }
+}
+
+/* Streaming Text Cursor */
+.voxa-cursor {
+  display: inline-block;
+  width: 2px;
+  height: 12px;
+  background: #8b5cf6;
+  margin-left: 2px;
+  animation: voxa-cursor-blink 1s step-end infinite;
+  box-shadow: 0 0 6px #8b5cf6;
+}
+
+@keyframes voxa-cursor-blink {
+  0%, 100% { opacity: 0; }
+  50% { opacity: 1; }
+}

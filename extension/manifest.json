@@ -1,0 +1,59 @@
+{
+  "manifest_version": 3,
+  "name": "Voxa Live Multilingual Translator",
+  "version": "1.0.0",
+
+  "permissions": [
+    "activeTab",
+    "tabs",
+    "storage",
+    "sidePanel",
+    "scripting",
+    "tabCapture",
+    "offscreen",
+    "contextMenus"
+  ],
+
+  "host_permissions": [
+    "http://127.0.0.1:8000/*",
+    "http://localhost:8000/*",
+    "https://meet.google.com/*",
+    "https://*.zoom.us/*",
+    "https://web.whatsapp.com/*"
+  ],
+
+  "background": {
+    "service_worker": "background/background.js",
+    "type": "module"
+  },
+
+  "action": {
+    "default_title": "Voxa"
+  },
+
+  "side_panel": {
+    "default_path": "sidepanel/sidepanel.html"
+  },
+
+  "commands": {
+    "activate-voxa": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+U"
+      },
+      "description": "Activate Voxa tab capture"
+    }
+  },
+
+  "web_accessible_resources": [
+    {
+      "resources": ["offscreen/*", "services/*"],
+      "matches": ["<all_urls>"]
+    }
+  ],
+
+  "icons": {
+    "16": "assets/icon16.png",
+    "48": "assets/icon48.png",
+    "128": "assets/icon128.png"
+  }
+}

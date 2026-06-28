@@ -210,12 +210,12 @@ export default function WorkspacePage() {
 
       silenceIntervalRef.current = setInterval(() => {
         if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) return;
-        if (Date.now() - lastAudioSendTimeRef.current > 100) {
+        if (Date.now() - lastAudioSendTimeRef.current > 3000) {
           const silenceBuffer = new Int16Array(4096);
           wsRef.current.send(silenceBuffer.buffer);
           lastAudioSendTimeRef.current = Date.now();
         }
-      }, 100);
+      }, 1000);
 
     } catch (err) {
       setError("🎤 Microphone Access Denied: Please check permissions.");

@@ -75,21 +75,21 @@ export function startAudioCapture(mediaStream) {
     sourceNode.connect(processorNode);
     processorNode.connect(audioContext.destination);
 
-    // ✅ FIX 2 PART 2: Send silence chunks if no audio for 100ms
-    // This handles gaps between speech and ensures backend always has data
+    // ✅ FIX 2 PART 2: Send silence chunks if no audio for 3000ms
+    // This acts as a fallback keepalive heartbeat only.
     silenceInterval = setInterval(() => {
       if (!isCapturing) return;
       
       const timeSinceLastSend = Date.now() - lastAudioSendTime;
       
-      // If no audio sent in last 100ms, send silence to keep connection alive
-      if (timeSinceLastSend > 100) {
+      // If no audio sent in last 3 seconds, send a keepalive silence frame
+      if (timeSinceLastSend > 3000) {
         const silenceBuffer = new Int16Array(4096); // All zeros = silence
         sendChunk(silenceBuffer.buffer);
         lastAudioSendTime = Date.now();
-        console.log("📍 Silence chunk sent (no audio detected)");
+        console.log("📍 Keepalive silence chunk sent");
       }
-    }, 100);
+    }, 1000);
 
     console.log("✅ Tab audio resampled and 16-bit PCM converter pipeline active.");
   } catch (err) {

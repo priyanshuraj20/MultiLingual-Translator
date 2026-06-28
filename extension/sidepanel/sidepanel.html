@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Voxa Translator Sidepanel</title>
+  
+  <!-- Premium Fonts and Material Symbols -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet" />
+  
+  <!-- Custom Styling -->
+  <link rel="stylesheet" href="sidepanel.css">
+</head>
+<body>
+
+  <!-- Interactive shader flow background (WebGL) -->
+  <canvas id="shader-canvas"></canvas>
+
+  <div class="sidepanel-wrapper">
+    
+    <!-- Top Header -->
+    <header class="app-header">
+      <div class="brand-area">
+        <div class="logo-box">
+          <img src="https://lh3.googleusercontent.com/aida/AP1WRLuKVSk3_84_5GQ6VkK2082k2yi4ZiupJd9HG6EFX_8ZdPjwMZ0pLB9YafMoTihOJwySlqPC8GR_ysGt6qanmSuH3t0OgpcAsHo_JkfRvhqb2XSZOGNqnsNNnHc4yj2BKgPqtrsSHLUsfnNcL6VIJQFqaFU51fidPBqq50VrfNldOBJEFxfdb-9Byi7HcQqBxZpgL9YnhDIkarAFkZnrdwPiDUPTpeQziyaJdyrhHuLsyC_MvFuOTOSzWw" alt="Voxa Logo" class="brand-logo">
+        </div>
+        <div class="brand-text">
+          <h1>Voxa</h1>
+          <span class="version-tag">Extension v2.4.0</span>
+        </div>
+      </div>
+      <div class="status-badge" id="status-badge-container">
+        <span class="dot-indicator bg-ready" id="status-dot"></span>
+        <span class="status-label" id="status-text">Standby</span>
+      </div>
+    </header>
+
+    <!-- Error Toast Notification -->
+    <div class="toast-error" id="error-toast" style="display: none;">
+      <span class="material-symbols-outlined icon">error</span>
+      <span class="msg" id="error-message">Connection failed</span>
+      <button class="btn-toast-close" id="btn-close-toast">
+        <span class="material-symbols-outlined">close</span>
+      </button>
+    </div>
+
+    <!-- Main Content Container -->
+    <main class="sidepanel-content">
+
+      <!-- Onboarding & License Card -->
+      <section class="premium-card onboarding-card" id="onboarding-card">
+        <div class="card-header border-b">
+          <div class="title-row">
+            <span class="material-symbols-outlined font-icon">vpn_key</span>
+            <h2>Onboarding & License</h2>
+          </div>
+          <button class="btn-text secondary" id="btn-toggle-guide" style="padding: 4px 8px; font-size: 8px;">
+            Hide Guide
+          </button>
+        </div>
+        <div class="card-body" id="onboarding-card-body" style="display: flex; flex-direction: column; gap: 12px;">
+          <!-- License Input -->
+          <div class="input-group">
+            <label for="input-auth-token">Voxa License Key</label>
+            <div style="display: flex; gap: 8px;">
+              <input type="password" id="input-auth-token" placeholder="Enter key (e.g. voxa_usr_9823ac)" style="flex: 1; background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.08); border-radius: 6px; padding: 8px 10px; font-size: 11px; color: #fff; outline: none;">
+              <button class="btn-text primary" id="btn-save-token" style="padding: 8px 12px;">Save</button>
+            </div>
+            <span class="mode-desc" style="font-size: 8px; opacity: 0.5;">Get your token from the Voxa web application dashboard.</span>
+          </div>
+
+          <!-- Installation Setup Guide Steps -->
+          <div class="setup-steps" style="border-top: 1px solid rgba(255,255,255,0.04); padding-top: 12px; display: flex; flex-direction: column; gap: 10px;">
+            <span class="label" style="font-size: 9px; font-weight: 700; text-transform: uppercase; color: rgba(208, 188, 255, 0.6);">Extension Setup Guide</span>
+            
+            <div style="background: rgba(0,0,0,0.2); border-radius: 8px; padding: 10px; border: 1px solid rgba(255,255,255,0.03);">
+              <div style="display: flex; align-items: flex-start; gap: 8px; font-size: 10px; line-height: 1.4; margin-bottom: 8px;">
+                <span style="background: var(--color-primary-container); color: #fff; border-radius: 50%; width: 16px; height: 16px; display: flex; align-items: center; justify-content: center; font-size: 8px; flex-shrink: 0; font-weight: bold;">1</span>
+                <span>Extract the downloaded **Voxa.zip** folder onto your computer.</span>
+              </div>
+              <div style="display: flex; align-items: flex-start; gap: 8px; font-size: 10px; line-height: 1.4; margin-bottom: 8px;">
+                <span style="background: var(--color-primary-container); color: #fff; border-radius: 50%; width: 16px; height: 16px; display: flex; align-items: center; justify-content: center; font-size: 8px; flex-shrink: 0; font-weight: bold;">2</span>
+                <span>Open browser and visit **<code>chrome://extensions/</code>** settings page.</span>
+              </div>
+              <div style="display: flex; align-items: flex-start; gap: 8px; font-size: 10px; line-height: 1.4; margin-bottom: 8px;">
+                <span style="background: var(--color-primary-container); color: #fff; border-radius: 50%; width: 16px; height: 16px; display: flex; align-items: center; justify-content: center; font-size: 8px; flex-shrink: 0; font-weight: bold;">3</span>
+                <span>Enable **Developer Mode** toggle in the top-right corner.</span>
+              </div>
+              <div style="display: flex; align-items: flex-start; gap: 8px; font-size: 10px; line-height: 1.4; margin-bottom: 8px;">
+                <span style="background: var(--color-primary-container); color: #fff; border-radius: 50%; width: 16px; height: 16px; display: flex; align-items: center; justify-content: center; font-size: 8px; flex-shrink: 0; font-weight: bold;">4</span>
+                <span>Click **"Load unpacked"** and select the unzipped **Voxa** folder.</span>
+              </div>
+              <div style="display: flex; align-items: flex-start; gap: 8px; font-size: 10px; line-height: 1.4;">
+                <span style="background: var(--color-primary-container); color: #fff; border-radius: 50%; width: 16px; height: 16px; display: flex; align-items: center; justify-content: center; font-size: 8px; flex-shrink: 0; font-weight: bold;">5</span>
+                <span>Press **`Ctrl + Shift + U`** (or right-click 'Activate Voxa Capture') on your meeting tab to activate capture.</span>
+              </div>
+            </div>
+            
+            <div style="text-align: center; margin-top: 4px;">
+              <img id="img-onboarding-graphic" alt="Setup Guide Graphic" style="width: 100%; border-radius: 6px; border: 1px solid rgba(255,255,255,0.06); object-fit: cover;">
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Configuration Card -->
+      <section class="premium-card config-card">
+        <div class="card-header border-b">
+          <div class="title-row">
+            <span class="material-symbols-outlined font-icon">settings_input_antenna</span>
+            <h2>Translation Settings</h2>
+          </div>
+        </div>
+        <div class="card-body dropdowns-row">
+          <div class="input-group">
+            <label for="select-source">Source Language</label>
+            <div class="custom-select-wrapper">
+              <select id="select-source">
+                <option value="en-US">English (US)</option>
+                <option value="es-ES">Spanish (Spain)</option>
+                <option value="fr-FR">French (France)</option>
+                <option value="de-DE">German (Germany)</option>
+              </select>
+            </div>
+          </div>
+          <div class="input-group">
+            <label for="select-target">Target Language</label>
+            <div class="custom-select-wrapper">
+              <select id="select-target">
+                <option value="hi-IN" selected>Hindi (Devanagari)</option>
+                <option value="es-ES">Spanish (Castilian)</option>
+                <option value="fr-FR">French (Standard)</option>
+                <option value="zh-CN">Chinese (Simplified)</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Connection / Operation Modes -->
+      <section class="premium-card mode-card">
+        <div class="card-header border-b">
+          <div class="title-row">
+            <span class="material-symbols-outlined font-icon">leak_add</span>
+            <h2>Execution Pipeline</h2>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="toggle-group">
+            <div class="mode-info">
+              <span class="mode-title">In-Page Floating Widget</span>
+              <span class="mode-desc">Inject draggable subtitles onto the active meeting tab</span>
+            </div>
+            <label class="switch">
+              <input type="checkbox" id="toggle-widget" checked>
+              <span class="slider"></span>
+            </label>
+          </div>
+          <div class="toggle-group mt-12">
+            <div class="mode-info">
+              <span class="mode-title">Meeting Simulation Mode</span>
+              <span class="mode-desc">Use pre-recorded dialog loops for offline demonstration</span>
+            </div>
+            <label class="switch">
+              <input type="checkbox" id="toggle-simulation">
+              <span class="slider"></span>
+            </label>
+          </div>
+        </div>
+      </section>
+
+      <!-- Audio Capturing Wave visualizer -->
+      <section class="premium-card visualizer-card">
+        <div class="card-header border-b">
+          <div class="title-row">
+            <span class="material-symbols-outlined font-icon animate-pulse-rec">mic</span>
+            <h2>Speech Stream Wave</h2>
+          </div>
+          <span class="font-mono text-xs uppercase" id="mic-status-label">Inactive</span>
+        </div>
+        <div class="card-body wave-visualizer-container">
+          <div class="wave-lines-wrapper" id="waveform-wave">
+            <!-- 15 bars for wave visualization -->
+            <div class="wave-bar" style="animation-delay: 0.1s; --max-h: 30%"></div>
+            <div class="wave-bar" style="animation-delay: 0.3s; --max-h: 60%"></div>
+            <div class="wave-bar" style="animation-delay: 0.2s; --max-h: 45%"></div>
+            <div class="wave-bar" style="animation-delay: 0.5s; --max-h: 80%"></div>
+            <div class="wave-bar" style="animation-delay: 0.4s; --max-h: 40%"></div>
+            <div class="wave-bar" style="animation-delay: 0.6s; --max-h: 95%"></div>
+            <div class="wave-bar" style="animation-delay: 0.3s; --max-h: 50%"></div>
+            <div class="wave-bar" style="animation-delay: 0.7s; --max-h: 35%"></div>
+            <div class="wave-bar" style="animation-delay: 0.2s; --max-h: 75%"></div>
+            <div class="wave-bar" style="animation-delay: 0.4s; --max-h: 20%"></div>
+            <div class="wave-bar" style="animation-delay: 0.8s; --max-h: 90%"></div>
+            <div class="wave-bar" style="animation-delay: 0.5s; --max-h: 55%"></div>
+            <div class="wave-bar" style="animation-delay: 0.1s; --max-h: 70%"></div>
+            <div class="wave-bar" style="animation-delay: 0.6s; --max-h: 40%"></div>
+            <div class="wave-bar" style="animation-delay: 0.3s; --max-h: 30%"></div>
+          </div>
+        </div>
+        <div class="card-footer footer-controls">
+          <div class="control-trigger-area">
+            <button class="btn-action-round" id="btn-record" title="Start capturing meeting speech">
+              <span class="material-symbols-outlined text-lg" id="record-icon">mic</span>
+            </button>
+            <div class="record-timer" id="record-duration">00:00</div>
+          </div>
+          <div id="player-mount-point" class="mini-audio-mount">
+            <!-- Simulated player will mount here -->
+          </div>
+        </div>
+      </section>
+
+      <!-- Transcripts Section -->
+      <section class="premium-card transcript-card">
+        <div class="card-header border-b">
+          <span class="card-ref">[01] Input_Stream (ASR)</span>
+          <span class="active-badge font-mono text-[9px] uppercase">Whisper Core</span>
+        </div>
+        <div class="card-body scrollable-text-area" id="transcript-container">
+          <p class="placeholder-text" id="transcript-placeholder">
+            Click the microphone button to begin capturing live audio signals.
+          </p>
+        </div>
+      </section>
+
+      <!-- Outputs Section -->
+      <section class="premium-card output-card">
+        <div class="card-header border-b">
+          <span class="card-ref">[02] Output_Buffer (NLLB)</span>
+          <span class="active-badge font-mono text-[9px] uppercase secondary-badge">Translation Active</span>
+        </div>
+        <div class="card-body scrollable-text-area" id="output-container">
+          <p class="placeholder-text" id="output-placeholder">
+            Translations will be written here in real-time.
+          </p>
+        </div>
+      </section>
+
+      <!-- Confidence Gauge & Controls -->
+      <section class="premium-card metrics-card">
+        <div class="card-body metrics-summary">
+          <div class="metric-row">
+            <span class="label">Inference Confidence</span>
+            <span class="value" id="confidence-percentage">95.00%</span>
+          </div>
+          <div class="progress-bar-wrapper">
+            <div class="progress-fill" id="confidence-bar" style="width: 95%;"></div>
+          </div>
+        </div>
+        <div class="card-footer footer-btns">
+          <button class="btn-text secondary" id="btn-clear">
+            Clear_Log
+          </button>
+          <button class="btn-text primary disabled" id="btn-play-tts" disabled>
+            <span class="material-symbols-outlined text-sm">volume_up</span>
+            Play_TTS
+          </button>
+        </div>
+      </section>
+
+    </main>
+
+    <!-- App Footer -->
+    <footer class="app-footer">
+      <div class="engine-status">
+        <span class="pulse-indicator glow"></span>
+        <span class="footer-status-msg">Voxa Neural Engine Active</span>
+      </div>
+    </footer>
+
+  </div>
+
+  <script src="sidepanel.js"></script>
+</body>
+</html>

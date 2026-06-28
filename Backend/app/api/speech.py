@@ -1,4 +1,4 @@
-from fastapi import APIRouter, UploadFile, File, HTTPException
+from fastapi import APIRouter, UploadFile, File, HTTPException, Form
 from fastapi.responses import FileResponse
 import os
 
@@ -21,13 +21,36 @@ async def get_output_audio():
     raise HTTPException(status_code=404, detail="Audio file not found")
 
 
+from app.services.languages import LANGUAGES, WHISPER_LANG_MAP, WHISPER_TO_NLLB
+
 @router.post("/translate-and-speak")
-async def translate_and_speak(file: UploadFile = File(...)):
+async def translate_and_speak(
+    file: UploadFile = File(...),
+    source_lang: str = Form("eng_Latn"),
+    target_lang: str = Form("hin_Deva")
+):
 
     try:
-        transcript = transcribe_audio(file)
+        # Determine source language hint for Whisper ASR
+        whisper_hint = None
+        if source_lang != "auto":
+            lang_prefix = source_lang.split("_")[0] if "_" in source_lang else source_lang
+            whisper_hint = WHISPER_LANG_MAP.get(lang_prefix)
 
-        translated = translate_text(transcript)
+        # Transcribe audio file
+        asr_res = transcribe_audio(file, language=whisper_hint)
+        transcript = asr_res["text"]
+        detected_language = asr_res["detected_language"]
+
+        # Resolve NLLB source language dynamically
+        nllb_src_lang = source_lang
+        if source_lang == "auto" and detected_language:
+            # Map detected language to NLLB code format
+            nllb_src_lang = WHISPER_TO_NLLB.get(detected_language.lower(), "eng_Latn")
+
+        print(f"🎙️ Whisper ASR transcribing: '{transcript}' | Detected Lang: {detected_language} | NLLB Source: {nllb_src_lang} ➔ Target: {target_lang}")
+
+        translated = translate_text(transcript, src_lang=nllb_src_lang, tgt_lang=target_lang)
         audio_file = TTSService.generate_speech(translated);
 
         return {

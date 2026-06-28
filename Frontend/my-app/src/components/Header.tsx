@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 
-export default function Header() {
+export default function Header({ onInstallClick }: { onInstallClick?: () => void }) {
   const pathname = usePathname();
   const isLanding = pathname === "/";
   const [showBanner, setShowBanner] = useState(true);
@@ -25,18 +25,21 @@ export default function Header() {
               <span className="font-bold text-white font-headline-md">Voxa</span>
             </Link>
             <nav className="hidden md:flex items-center gap-6 font-sans">
-              <Link href="/workspace" className="text-sm text-[#cbc3d7] hover:text-white transition-colors">
-                Platform
-              </Link>
-              <Link href="/technology" className="text-sm text-[#cbc3d7] hover:text-white transition-colors">
-                Solutions
-              </Link>
-              <Link href="/technology" className="text-sm text-[#cbc3d7] hover:text-white transition-colors">
-                API Reference
-              </Link>
-              <Link href="/design-system" className="text-sm text-[#cbc3d7] hover:text-white transition-colors">
-                Design System
-              </Link>
+              <a href="#architecture" className="text-sm text-[#cbc3d7] hover:text-white transition-colors">
+                Architecture
+              </a>
+              <a 
+                href="#install" 
+                onClick={(e) => {
+                  if (onInstallClick) {
+                    e.preventDefault();
+                    onInstallClick();
+                  }
+                }}
+                className="text-sm text-[#cbc3d7] hover:text-white transition-colors"
+              >
+                Install Extension
+              </a>
             </nav>
           </div>
           <div className="flex items-center gap-4">
@@ -67,10 +70,19 @@ export default function Header() {
             </p>
           </div>
           <div className="flex items-center gap-4">
-            <button className="text-[12px] md:text-sm text-primary hover:underline font-bold flex items-center gap-1">
+            <a 
+              href="#install" 
+              onClick={(e) => {
+                if (onInstallClick) {
+                  e.preventDefault();
+                  onInstallClick();
+                }
+              }}
+              className="text-[12px] md:text-sm text-primary hover:underline font-bold flex items-center gap-1"
+            >
               Download &amp; Sync Extension
-              <span className="material-symbols-outlined text-xs">open_in_new</span>
-            </button>
+              <span className="material-symbols-outlined text-xs">download</span>
+            </a>
             <button 
               onClick={() => setShowBanner(false)}
               className="text-[#cbc3d7] hover:text-white transition-colors flex items-center justify-center p-0.5"

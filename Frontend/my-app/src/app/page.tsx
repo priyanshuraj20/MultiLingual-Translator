@@ -5,47 +5,50 @@ import Header from "@/components/Header";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import ShaderBackground from "@/components/ui/ShaderBackground";
+import InstallModal from "@/components/InstallModal";
+import UseCases from "@/components/UseCases";
+import ArchitectureFlows from "@/components/ArchitectureFlows";
 
 const features = [
   {
-    icon: "bolt",
-    title: "Instantaneous Inference",
-    desc: "Optimized CUDA kernels deliver sub-100ms response times for real-time speech-to-speech interaction across 200+ locales.",
+    icon: "interpreter_mode",
+    title: "Real-Time Translation",
+    desc: "Whisper ASR transcribes speech instantly, while NLLB-200 translates text across 200+ languages directly.",
     accent: "group-hover:border-[#8b5cf6]/30",
     iconColor: "text-[#8b5cf6]",
   },
   {
-    icon: "security",
-    title: "Zero-Trust Privacy",
-    desc: "Data is processed in ephemeral memory. No logs, no persistence, and enterprise-grade VPC deployment options.",
+    icon: "volume_mute",
+    title: "Muted Original Voice",
+    desc: "Blocks the foreign speaker's original voice on the tab, outputting only the translated audio so you hear what they mean.",
     accent: "group-hover:border-[#adc6ff]/30",
     iconColor: "text-[#adc6ff]",
   },
   {
-    icon: "api",
-    title: "Native Integration",
-    desc: "Simple gRPC and REST APIs for seamless embedding into existing communication workflows and custom hardware.",
+    icon: "translate",
+    title: "200+ Language Locales",
+    desc: "Support for direct machine translation between 200+ languages, including Hindi, Spanish, French, and regional dialects.",
     accent: "group-hover:border-[#ffb869]/30",
     iconColor: "text-[#ffb869]",
   },
   {
-    icon: "layers",
-    title: "Model Orchestration",
-    desc: "Whisper v3, NLLB-200, and proprietary transformer layers working in concert for unparalleled lexical accuracy.",
+    icon: "record_voice_over",
+    title: "Language Practice Mode",
+    desc: "Speak in your native language (e.g. Hindi) and receive immediate translation text and audio in English to practice speaking.",
     accent: "group-hover:border-[#d0bcff]/30",
     iconColor: "text-[#d0bcff]",
   },
   {
-    icon: "public",
-    title: "Global Edge Nodes",
-    desc: "24 regional data centers ensure low-latency connectivity regardless of where your users are located globally.",
+    icon: "leak_add",
+    title: "WebSocket Streaming",
+    desc: "Continuous PCM audio streaming with sub-100ms response times over a persistent WebSocket server connection.",
     accent: "group-hover:border-[#3b82f6]/30",
     iconColor: "text-[#3b82f6]",
   },
   {
-    icon: "monitoring",
-    title: "Real-time Analytics",
-    desc: "Monitor token usage, latency distribution, and sentiment across all translation pipelines via an integrated dashboard.",
+    icon: "settings_voice",
+    title: "ElevenLabs Synthesis",
+    desc: "Voice synthesis powered by ElevenLabs generates clean, expressive, and natural speech in your target language.",
     accent: "group-hover:border-[#8b5cf6]/30",
     iconColor: "text-[#8b5cf6]",
   },
@@ -53,16 +56,26 @@ const features = [
 
 export default function LandingPage() {
   const [mounted, setMounted] = useState(false);
+  const [activeFlow, setActiveFlow] = useState("meeting");
+  const [showInstallModal, setShowInstallModal] = useState(false);
 
   useEffect(() => {
     setMounted(true);
+    const handleHash = () => {
+      if (window.location.hash === "#install") {
+        setShowInstallModal(true);
+      }
+    };
+    window.addEventListener("hashchange", handleHash);
+    handleHash();
+    return () => window.removeEventListener("hashchange", handleHash);
   }, []);
 
   if (!mounted) return null;
 
   return (
     <>
-      <Header />
+      <Header onInstallClick={() => setShowInstallModal(true)} />
       {/* WebGL interactive background */}
       <ShaderBackground />
 
@@ -118,12 +131,6 @@ export default function LandingPage() {
             >
               Launch Workspace
               <span className="material-symbols-outlined text-sm">arrow_forward</span>
-            </Link>
-            <Link
-              href="/technology"
-              className="border border-white/10 bg-white/5 text-white px-8 py-3.5 rounded-lg font-bold text-sm hover:bg-white/10 hover:border-white/20 transition-all active:scale-98 select-none"
-            >
-              System Pipeline Architecture
             </Link>
           </motion.div>
 
@@ -227,6 +234,12 @@ export default function LandingPage() {
             ))}
           </div>
         </section>
+
+        {/* Modular System Architecture Section */}
+        <ArchitectureFlows />
+
+        {/* Modular Use Cases & Platforms Section */}
+        <UseCases />
 
         {/* Stats / Trust Section */}
         <section className="max-w-[1200px] mx-auto px-6 py-24 border-t border-white/5 relative z-10">
@@ -363,25 +376,25 @@ export default function LandingPage() {
             </div>
             <div className="flex flex-col gap-3">
               <h4 className="text-xs font-bold uppercase tracking-widest text-[#cbc3d7]/30">Resources</h4>
-              <Link href="/technology" className="text-sm text-zinc-400 hover:text-white transition-colors">
+              <Link href="#" className="text-sm text-zinc-400 hover:text-white transition-colors">
                 Documentation
               </Link>
-              <Link href="/technology" className="text-sm text-zinc-400 hover:text-white transition-colors">
+              <Link href="#" className="text-sm text-zinc-400 hover:text-white transition-colors">
                 API Reference
               </Link>
-              <Link href="/technology" className="text-sm text-zinc-400 hover:text-white transition-colors">
+              <Link href="#" className="text-sm text-zinc-400 hover:text-white transition-colors">
                 System Status
               </Link>
             </div>
             <div className="flex flex-col gap-3">
               <h4 className="text-xs font-bold uppercase tracking-widest text-[#cbc3d7]/30">Company</h4>
-              <Link href="/technology" className="text-sm text-zinc-400 hover:text-white transition-colors">
+              <Link href="#" className="text-sm text-zinc-400 hover:text-white transition-colors">
                 About
               </Link>
-              <Link href="/technology" className="text-sm text-zinc-400 hover:text-white transition-colors">
+              <Link href="#" className="text-sm text-zinc-400 hover:text-white transition-colors">
                 Security Policy
               </Link>
-              <Link href="/technology" className="text-sm text-zinc-400 hover:text-white transition-colors">
+              <Link href="#" className="text-sm text-zinc-400 hover:text-white transition-colors">
                 Contact Sales
               </Link>
             </div>
@@ -396,6 +409,79 @@ export default function LandingPage() {
           </div>
         </div>
       </footer>
+
+      {/* Centric Extension Setup Modal */}
+      {showInstallModal && (
+        <div className="fixed inset-0 z-55 flex items-center justify-center bg-black/80 backdrop-blur-md p-4">
+          <div className="relative w-full max-w-4xl bg-[#0f0d15]/95 border border-white/10 rounded-2xl p-8 shadow-2xl flex flex-col md:flex-row gap-8 overflow-y-auto max-h-[90vh] animate-in fade-in zoom-in-95 duration-200">
+            {/* Close Button */}
+            <button 
+              onClick={() => {
+                setShowInstallModal(false);
+                window.location.hash = "";
+              }}
+              className="absolute top-4 right-4 text-zinc-500 hover:text-white transition-colors"
+            >
+              <span className="material-symbols-outlined text-xl">close</span>
+            </button>
+
+            {/* Left Side: Setup Graphic Image */}
+            <div className="w-full md:w-1/2 flex items-center justify-center bg-white/3 border border-white/5 rounded-xl p-4 overflow-hidden">
+              <img 
+                src="/setup_guide.png" 
+                alt="Chrome Extensions Setup Guide" 
+                className="w-full h-auto object-contain rounded-lg shadow-lg border border-white/5"
+              />
+            </div>
+
+            {/* Right Side: Install details & Actions */}
+            <div className="w-full md:w-1/2 flex flex-col justify-between">
+              <div>
+                <span className="text-[9px] font-mono text-[#adc6ff] uppercase tracking-widest block mb-2">QUICK SETUP GUIDE</span>
+                <h3 className="text-2xl font-bold text-white font-geist mb-4">Install Voxa Extension</h3>
+                
+                {/* Quick Steps */}
+                <ol className="text-xs text-zinc-400 space-y-3 leading-relaxed mb-6 list-decimal list-inside">
+                  <li>Download the packed <strong>Voxa.zip</strong> extension.</li>
+                  <li>Extract/unzip the file to a local folder.</li>
+                  <li>Open <strong>chrome://extensions</strong> in your browser.</li>
+                  <li>Enable <strong>Developer Mode</strong> (top right).</li>
+                  <li>Click <strong>Load Unpacked</strong> and select the folder.</li>
+                  <li><strong>Open Dashboard</strong>: Click the pinned Voxa toolbar icon to open the side panel dashboard.</li>
+                  <li><strong>Start Translation</strong>: Press <strong>Ctrl + Shift + U</strong> (or right-click 'Activate Voxa Capture') on your meeting page and click <strong>Start Capturing</strong>.</li>
+                </ol>
+
+                {/* Facts info box */}
+                <div className="bg-white/3 border border-white/5 rounded-lg p-3 text-[11px] text-[#ffb869] font-mono mb-6">
+                  💡 Voxa requires Developer Mode to load custom audio capture libraries. Secure License Token will sync on launch.
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-3">
+                <a 
+                  href="/Voxa.zip" 
+                  download="Voxa.zip" 
+                  className="bg-[#8b5cf6] hover:bg-[#7c3aed] text-white py-3 px-4 rounded-lg font-bold text-sm text-center flex items-center justify-center gap-2 shadow-lg shadow-[#8b5cf6]/20 transition-all duration-255"
+                >
+                  <span className="material-symbols-outlined text-sm">download</span>
+                  Download Extension Package
+                </a>
+                <Link 
+                  href="/workspace" 
+                  onClick={() => {
+                    setShowInstallModal(false);
+                    window.location.hash = "";
+                  }}
+                  className="border border-white/10 bg-white/5 hover:bg-white/10 text-white py-3 px-4 rounded-lg font-bold text-sm text-center flex items-center justify-center gap-2 transition-all duration-255"
+                >
+                  <span className="material-symbols-outlined text-sm">rocket_launch</span>
+                  Try it out (Workspace)
+                </Link>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }

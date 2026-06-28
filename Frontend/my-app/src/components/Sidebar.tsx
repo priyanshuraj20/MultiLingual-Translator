@@ -52,41 +52,15 @@ export default function Sidebar() {
           </li>
 
           <li>
-            <Link
-              href="/technology"
-              className={`flex items-center px-stack-lg py-4 font-label-md text-label-md transition-all group ${
-                pathname === "/technology"
-                  ? "sidebar-item-active font-bold"
-                  : "text-on-surface-variant hover:text-on-surface hover:bg-white/5"
-              }`}
+            <a
+              href="#install"
+              className="flex items-center px-stack-lg py-4 font-label-md text-label-md text-[#cbc3d7] hover:text-white hover:bg-white/5 transition-all group"
             >
-              <span
-                className="material-symbols-outlined mr-4 text-[22px]"
-                style={pathname === "/technology" ? { fontVariationSettings: "'FILL' 1" } : {}}
-              >
-                insights
+              <span className="material-symbols-outlined mr-4 text-[22px] text-[#adc6ff]">
+                download_for_offline
               </span>
-              Tech Pipeline
-            </Link>
-          </li>
-
-          <li>
-            <Link
-              href="/design-system"
-              className={`flex items-center px-stack-lg py-4 font-label-md text-label-md transition-all group ${
-                pathname === "/design-system"
-                  ? "sidebar-item-active font-bold"
-                  : "text-on-surface-variant hover:text-on-surface hover:bg-white/5"
-              }`}
-            >
-              <span
-                className="material-symbols-outlined mr-4 text-[22px]"
-                style={pathname === "/design-system" ? { fontVariationSettings: "'FILL' 1" } : {}}
-              >
-                palette
-              </span>
-              Design System
-            </Link>
+              Download Extension
+            </a>
           </li>
         </ul>
       </nav>
@@ -94,13 +68,6 @@ export default function Sidebar() {
       {/* Footer Navigation */}
       <div className="p-stack-lg border-t border-white/5 flex flex-col gap-5">
         <div className="flex flex-col gap-3">
-          <Link
-            href="#"
-            className="flex items-center text-on-surface-variant hover:text-on-surface transition-all font-label-md text-label-md"
-          >
-            <span className="material-symbols-outlined mr-4 text-[22px]">settings</span>
-            Preferences
-          </Link>
           <Link
             href="/"
             className="flex items-center text-on-surface-variant hover:text-red-400 transition-all font-label-md text-label-md"

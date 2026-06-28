@@ -4,6 +4,8 @@ from app.api.health import router as health_router
 from app.api.speech import router as speech_router
 from app.api.translation import router as translation_router
 
+from app.api.websocket import router as websocket_router
+
 
 app = FastAPI(
     title="LiveLingua API",
@@ -25,6 +27,14 @@ app.add_middleware(
 app.include_router(health_router)
 app.include_router(speech_router)
 app.include_router(translation_router)
+
+app.include_router(websocket_router)
+
+from app.services.languages import LANGUAGES
+
+@app.get("/languages")
+def get_languages():
+    return LANGUAGES
 
 @app.get("/test")
 def test_route():

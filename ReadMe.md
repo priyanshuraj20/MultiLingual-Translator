@@ -1,8 +1,6 @@
 # 🌍 Voxa AI — Real-Time Multilingual Speech Translator
 
-<p align="center">
-  <img src="assets/landing_page.png" alt="Voxa AI Landing Page" width="100%" style="border-radius: 10px; border: 1px solid rgba(255,255,255,0.1); margin-bottom: 20px;" />
-</p>
+![Voxa AI Landing Page](assets/landing_page.png)
 
 <p align="center">
   <strong>Real-time AI-powered multilingual speech translation platform for Google Meet, online calls, and live browser audio.</strong>

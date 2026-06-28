@@ -1,7 +1,7 @@
 # 🌍 Voxa AI — Real-Time Multilingual Speech Translator
 
 <p align="center">
-  <img src="assets/setup_guide.png" alt="Voxa AI Cover" width="100%" style="border-radius: 10px; border: 1px solid rgba(255,255,255,0.1); margin-bottom: 20px;" />
+  <img src="assets/landing_page.png" alt="Voxa AI Landing Page" width="100%" style="border-radius: 10px; border: 1px solid rgba(255,255,255,0.1); margin-bottom: 20px;" />
 </p>
 
 <p align="center">
@@ -15,6 +15,22 @@
   <img src="https://img.shields.io/badge/Chrome_Extension-4285F4?style=for-the-badge&logo=googlechrome&logoColor=white" />
   <img src="https://img.shields.io/badge/WebSockets-010101?style=for-the-badge&logo=socketdotio&logoColor=white" />
   <img src="https://img.shields.io/badge/Meta_NLLB_200-044F88?style=for-the-badge&logo=meta&logoColor=white" />
+</p>
+
+---
+
+## 📸 Product Showcases
+
+### 💻 Real-Time Workspace Dashboard
+The core application workspace downsamples microphone signals in the browser, transmits raw Int16 PCM packages to our FastAPI server over WebSockets, and renders speaker-attributed original and translated text side-by-side.
+<p align="center">
+  <img src="assets/workspace.png" alt="Voxa AI Workspace" width="100%" style="border-radius: 8px; border: 1px solid rgba(255,255,255,0.08);" />
+</p>
+
+### 🌍 Google Meet Active Integration
+When inside a Google Meet call, clicking the pinned toolbar icon reveals our custom side panel layout. Live translations stream directly into the panel, while a floating widget renders subtitles on top of the meeting tab.
+<p align="center">
+  <img src="assets/google_meet.png" alt="Google Meet Translation" width="100%" style="border-radius: 8px; border: 1px solid rgba(255,255,255,0.08);" />
 </p>
 
 ---
@@ -155,6 +171,10 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 3. Click **Load Unpacked** (top-left).
 4. Select the `extension/` folder inside this project's root directory.
 5. Paste your license key (`voxa_local_dev`) inside the Sidepanel dashboard to activate tab capture!
+
+<p align="center">
+  <img src="assets/setup_guide.png" alt="Extension Onboarding Guide" width="60%" style="border-radius: 8px; border: 1px solid rgba(255,255,255,0.06); margin-top: 15px;" />
+</p>
 
 ---
 

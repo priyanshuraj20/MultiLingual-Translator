@@ -1,501 +1,183 @@
 # 🌍 Voxa AI — Real-Time Multilingual Speech Translator
 
 <p align="center">
+  <img src="assets/setup_guide.png" alt="Voxa AI Cover" width="100%" style="border-radius: 10px; border: 1px solid rgba(255,255,255,0.1); margin-bottom: 20px;" />
+</p>
 
-Real-time AI-powered multilingual speech translation platform for meetings, lectures, interviews, webinars and browser audio.
+<p align="center">
+  <strong>Real-time AI-powered multilingual speech translation platform for Google Meet, online calls, and live browser audio.</strong>
+</p>
 
-Built using **FastAPI**, **Next.js**, **Chrome Extension**, **Whisper**, **NLLB-200**, **WebSockets**, and **Google Meet Tab Capture API**.
-
+<p align="center">
+  <img src="https://img.shields.io/badge/FastAPI-009688?style=for-the-badge&logo=fastapi&logoColor=white" />
+  <img src="https://img.shields.io/badge/Next.js-000000?style=for-the-badge&logo=nextdotjs&logoColor=white" />
+  <img src="https://img.shields.io/badge/React-20232A?style=for-the-badge&logo=react&logoColor=61DAFB" />
+  <img src="https://img.shields.io/badge/Chrome_Extension-4285F4?style=for-the-badge&logo=googlechrome&logoColor=white" />
+  <img src="https://img.shields.io/badge/WebSockets-010101?style=for-the-badge&logo=socketdotio&logoColor=white" />
+  <img src="https://img.shields.io/badge/Meta_NLLB_200-044F88?style=for-the-badge&logo=meta&logoColor=white" />
 </p>
 
 ---
 
-# Demo
-
-## Dashboard
-
-![Dashboard](assets/dashboard.png)
-
----
-
-## Workspace
-
-![Workspace](assets/workspace.png)
-
----
-
-## Google Meet Translation
-
-![Google Meet](assets/google-meet.png)
-
----
-
-# What is Voxa?
-
-Voxa AI is a browser-based real-time multilingual translation platform capable of translating live speech from:
-
-- Google Meet
-- Zoom (architecture ready)
-- Microsoft Teams (architecture ready)
-- Browser Audio
-- Uploaded Audio
-- Live Microphone
-
-The platform captures browser audio, performs low-latency speech recognition using Whisper, translates into 200+ languages using Meta NLLB-200, restores punctuation, applies grammar correction, and streams translated subtitles back to both the dashboard and the meeting overlay in real time.
-
----
-
-# Key Features
-
-## AI Speech Recognition
-
-- Whisper Large V3
-- Streaming transcription
-- Automatic language detection
-- Low latency inference
-
----
-
-## Translation Engine
-
-- Meta NLLB-200
-- 200+ supported languages
-- Auto source language
-- Manual source selection
-- Manual target selection
-
----
-
-## Smart Text Processing
-
-- Grammar correction
-- Punctuation restoration
-- Sentence refinement
-- Context-aware formatting
-
----
-
-## Browser Extension
-
-- Google Meet integration
-- Floating subtitles
-- Side Panel
-- Browser Audio Capture
-- Live waveform visualization
-
----
-
-## Dashboard
-
-- Real-time transcript viewer
-- Translation viewer
-- Confidence score
-- Session controls
-- Download Extension
-- Extension Sync
-
----
-
-# Architecture
+## 🚀 The Voxa Pipeline
+Voxa is a high-performance system that captures browser or microphone audio, processes it through multiple sequential AI layers, and streams real-time subtitles back to the client in **under 1 second**.
 
 ```
-                   User
-                     │
-                     ▼
-              Next.js Dashboard
-                     │
-         REST API + WebSocket
-                     │
-                     ▼
-            FastAPI Backend
-                     │
-      ┌──────────────┼──────────────┐
-      │              │              │
- Whisper       Grammar Engine    NLLB-200
-      │              │              │
-      └──────────────┼──────────────┘
-                     │
-             Live Translation
-                     │
-     ┌───────────────┴────────────────┐
-     │                                │
- Dashboard                    Chrome Extension
+[User speaks / Meeting Audio] 
+             │
+             ▼
+[AudioContext & ScriptProcessor] ──► (Converts Float32 to Int16, downsamples to 16kHz Mono)
+             │
+             ▼
+[WebSocket Channel] ──► (Streams raw PCM chunks to FastAPI in 500ms intervals)
+             │
+             ▼
+[RMS VAD Check] ──► (Skips silence processing to conserve API costs)
+             │
+             ▼
+[Local Speaker Diarizer] ──► (FFT Pitch Analysis detects speaker pitch: e.g. "Speaker A")
+             │
+             ▼
+[Whisper ASR Model] ──► (Transcribes audio into raw, unpunctuated text)
+             │
+             ▼
+[Llama 3.1 Punctuation] ──► (Restores punctuation and sentence structure via Groq)
+             │
+             ▼
+[Llama 3.1 Grammar Fixer] ──► (Refines grammatical errors for high translation accuracy)
+             │
+             ▼
+[NLLB-200 Translation] ──► (Translates corrected text into 200+ NLLB languages)
+             │
+             ▼
+[WebSocket JSON Response] ──► (Streams back translation: displayed on Web App & Injected Floating Widget)
 ```
 
 ---
 
-# Browser Extension Architecture
+## ✨ Core Features
 
+### 🎙️ Real-Time WebSocket Streaming
+Traditional systems wait for full sentences before translating, causing 5–10 seconds of latency. Voxa uses browser Web Audio downsampling and persistent WebSocket streams to deliver real-time transcripts and translations in **under 1 second**.
+
+### 👤 Local Speaker Diarization
+Voxa features a custom, lightweight, zero-dependency speaker diarizer running entirely on the CPU:
+* Converts PCM streams into floating points and runs Fast Fourier Transforms (FFT).
+* Estimates fundamental voice frequency (F0 pitch) inside the $80\text{ Hz} - 300\text{ Hz}$ range.
+* Clusters speakers dynamically (e.g. `Speaker A`, `Speaker B`) with zero PyTorch/GPU overhead.
+
+### 🧠 Sequential AI Refinement Pipeline
+Subtitles are processed in a multi-stage NLP pipeline before translation:
+1. **ASR:** Captures raw text (e.g., `"hello welcome today we talk about ai"`).
+2. **Punctuation:** Restores boundaries (e.g., `"Hello, welcome! Today we will talk about AI."`).
+3. **Grammar Correction:** Fixes grammar mistakes without changing meaning.
+4. **Direct NLLB Translation:** Translates the grammatically correct, punctuated text into 200+ supported languages.
+
+### 🌐 Chrome Extension (Manifest V3)
+* **Google Meet Integration:** Integrates into Google Meet calls.
+* **Floating Widget:** Injects a custom subtitle overlay directly onto your active browser tab.
+* **Side Panel UI:** Displays chronological conversation transcript logs grouped and color-coded by speaker.
+
+---
+
+## 🛠️ Project Structure
 ```
-Google Meet
-
-      │
-
-meetDetector.js
-      │
-      ▼
-
-background.js
-
-      │
-
-tabCapture API
-
-      │
-
-offscreen.js
-
-      │
-
-audioCapture.js
-
-      │
-
-PCM Audio
-
-      │
-
-WebSocket
-
-      │
-
-FastAPI Backend
-
-      │
-
-Whisper
-
-      │
-
-Grammar
-
-      │
-
-NLLB Translation
-
-      │
-
-WebSocket Response
-
-      │
-
-background.js
-
-      │
-
-───────────────┬────────────────
-
-               │
-
-floatingWidget.js
-
-sidepanel.js
-```
-
----
-
-# Technology Stack
-
-## Frontend
-
-- Next.js
-- React
-- TypeScript
-- TailwindCSS
-- Framer Motion
-- WebSocket Client
-
----
-
-## Backend
-
-- FastAPI
-- Python
-- WebSocket
-- Uvicorn
-
----
-
-## AI Models
-
-- Whisper Large V3
-- Meta NLLB-200 Distilled
-- Grammar Correction
-- DeepMultilingualPunctuation
-
----
-
-## Browser APIs
-
-- Chrome Extension Manifest V3
-- Side Panel API
-- Tab Capture API
-- Offscreen Documents
-- Runtime Messaging
-- Storage API
-
----
-
-# Complete Project Structure
-
-```
-MultiLingual Translator/
-
+Voxa-ai/
+├── Backend/                 # Python FastAPI Web Server & AI Engine
+│   └── app/
+│       ├── api/             # API Router Entrypoints (REST & WebSockets)
+│       ├── core/            # Configuration loaders & setup
+│       ├── services/        # Business logic (Whisper, NLLB, Diarizer, LLM)
+│       └── main.py          # FastAPI application bootloader
 │
-
-├── Frontend/
-│   ├── Dashboard
-│   ├── Workspace
-│   ├── Download Extension
-│   ├── Components
-│   ├── Hooks
-│   └── API Layer
+├── Frontend/my-app/         # Next.js 15 Client Interface
+│   ├── public/              # Static assets & packed Voxa.zip
+│   └── src/
+│       ├── app/             # Landing page & workspace dashboard
+│       └── components/      # Modular UI & overlay components
 │
-
-├── Backend/
-│   ├── API
-│   ├── Services
-│   ├── WebSocket
-│   ├── Whisper
-│   ├── Translation
-│   ├── Grammar
-│   └── Punctuation
-│
-
-├── Extension/
-│   ├── background
-│   ├── content
-│   ├── offscreen
-│   ├── popup
-│   ├── sidepanel
-│   ├── services
-│   └── manifest.json
-│
-
-└── assets/
+└── extension/               # Chrome Extension source
+    ├── background/          # Tab capture lifecycle manager
+    ├── content/             # Injected floating subtitle widgets
+    ├── offscreen/           # Low-level audio context capture page
+    └── sidepanel/           # Extension Settings & transcripts list
 ```
 
 ---
 
-# Complete Translation Pipeline
+## ⚙️ Local Installation & Setup
 
-```
-Meeting Audio
+### 1. Prerequisite API Keys
+Create a `.env` file in `Backend/app/.env` and configure your credentials:
+```env
+# Groq API Key (Used for Llama 3.1 Punctuation & Grammar Correction)
+GROQ_API_KEY=your_groq_api_key_here
 
-↓
+# OpenAI API Key (Used for Whisper Speech-to-Text)
+OPENAI_API_KEY=your_openai_api_key_here
 
-Chrome Tab Capture
-
-↓
-
-Offscreen Document
-
-↓
-
-Audio Processing
-
-↓
-
-PCM Conversion
-
-↓
-
-WebSocket
-
-↓
-
-FastAPI
-
-↓
-
-Whisper
-
-↓
-
-Detected Language
-
-↓
-
-Grammar
-
-↓
-
-Punctuation
-
-↓
-
-NLLB Translation
-
-↓
-
-JSON Response
-
-↓
-
-WebSocket
-
-↓
-
-Dashboard
-
-↓
-
-Floating Widget
-
-↓
-
-Side Panel
+# ElevenLabs API Key (Used for Speech Synthesis)
+ELEVEN_LABS_API_KEY=your_eleven_labs_api_key_here
 ```
 
----
+### 2. Start the Backend Server
+```bash
+cd Backend
+# Create virtual environment
+python -m venv .venv
+source .venv/bin/activate  # On Windows: .venv\Scripts\activate
 
-# AI Pipeline
+# Install dependencies
+pip install -r requirements.txt
 
-```
-Audio
-
-↓
-
-Voice Activity Detection
-
-↓
-
-Whisper
-
-↓
-
-Language Detection
-
-↓
-
-Grammar Correction
-
-↓
-
-Punctuation
-
-↓
-
-Sentence Refinement
-
-↓
-
-NLLB Translation
-
-↓
-
-Final Subtitle
+# Run the FastAPI server
+uvicorn app.main:app --reload --port 8000
 ```
 
----
+### 3. Start the Next.js Workspace
+```bash
+cd Frontend/my-app
 
-# Latency Optimizations
+# Create local environment config
+echo "NEXT_PUBLIC_BACKEND_URL=http://localhost:8000" > .env.local
 
-✅ Streaming WebSockets
+# Install dependencies
+npm install
 
-✅ PCM Audio Streaming
-
-✅ Chunk-based Processing
-
-✅ Browser-side Downsampling
-
-✅ No Audio File Upload
-
-✅ Incremental Translation
-
-✅ Offscreen Processing
-
-✅ Async FastAPI
-
----
-
-# Browser Extension Flow
-
+# Run the development workspace
+npm run dev
 ```
-User joins Google Meet
+Open [http://localhost:3000](http://localhost:3000) in your browser.
 
-↓
-
-Meet Detector
-
-↓
-
-Background Worker
-
-↓
-
-Tab Capture
-
-↓
-
-Offscreen Document
-
-↓
-
-Audio Capture
-
-↓
-
-WebSocket
-
-↓
-
-Backend
-
-↓
-
-Translation
-
-↓
-
-Subtitle Rendering
-```
+### 4. Load the Chrome Extension
+1. Open Chrome and go to `chrome://extensions/`.
+2. Enable **Developer Mode** (toggle in the top-right corner).
+3. Click **Load Unpacked** (top-left).
+4. Select the `extension/` folder inside this project's root directory.
+5. Paste your license key (`voxa_local_dev`) inside the Sidepanel dashboard to activate tab capture!
 
 ---
 
-# Deployment
+## 🚀 Cloud Deployment
 
-Frontend
+### Backend (Railway)
+1. Link your repository to a new **Railway** project.
+2. Configure your Environment Variables (`GROQ_API_KEY`, `OPENAI_API_KEY`, etc.) inside the Railway Variables dashboard.
+3. Railway will deploy your Python FastAPI app and assign you a production URL (e.g. `https://your-backend.up.railway.app`).
 
-Vercel
-
-Backend
-
-Railway
-
-Chrome Extension
-
-Chrome Web Store
-
----
-
-# Future Roadmap
-
-- Voice Cloning
-- AI Meeting Summary
-- Speaker Diarization
-- Live Captions Export
-- Meeting Recording
-- AI Notes
-- AI Action Items
-- Sentiment Analysis
-- Zoom Integration
-- Microsoft Teams Integration
-- Safari Extension
-- Firefox Extension
+### Frontend (Vercel)
+1. Link your repository to **Vercel**.
+2. Add the following environment variable inside the Vercel Settings:
+   * **Key:** `NEXT_PUBLIC_BACKEND_URL`
+   * **Value:** `https://your-backend.up.railway.app` (Do **not** include a trailing slash `/`).
+3. Deploy the project. Next.js will build the assets and connect to your Railway server.
 
 ---
 
-# Author
+## 📝 License
+This project is licensed under the MIT License.
 
-**Priyanshu Raj**
-
-Computer Science Engineering
-
-AI • Full Stack • Systems • Chrome Extensions
-
----
-
-# License
-
-MIT License
+## 👤 Author
+**Priyanshu Raj**  
+Computer Science Engineering  
+*AI • Full Stack • Systems • Chrome Extensions*

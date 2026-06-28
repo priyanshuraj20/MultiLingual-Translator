@@ -42,7 +42,7 @@ async def translate_and_speak(
         transcript = asr_res["text"]
         detected_language = asr_res["detected_language"]
 
-        # Resolve NLLB source language dynamically
+        # Determine NLLB source language dynamically
         nllb_src_lang = source_lang
         if source_lang == "auto" and detected_language:
             # Map detected language to NLLB code format
@@ -50,12 +50,24 @@ async def translate_and_speak(
 
         print(f"🎙️ Whisper ASR transcribing: '{transcript}' | Detected Lang: {detected_language} | NLLB Source: {nllb_src_lang} ➔ Target: {target_lang}")
 
-        translated = translate_text(transcript, src_lang=nllb_src_lang, tgt_lang=target_lang)
+        # 1. Punctuation Restoration
+        from app.services.punctuation_service import restore_punctuation
+        punctuated_transcript = restore_punctuation(transcript)
+
+        # 2. Grammar Correction
+        from app.services.grammar_service import correct_grammar
+        corrected_transcript = correct_grammar(punctuated_transcript)
+
+        # 3. Translation
+        translated = translate_text(corrected_transcript, src_lang=nllb_src_lang, tgt_lang=target_lang)
         audio_file = TTSService.generate_speech(translated);
 
         return {
             "success": True,
-            "transcript": transcript,
+            "speaker": "Speaker A",
+            "original_transcript": transcript,
+            "corrected_transcript": corrected_transcript,
+            "transcript": corrected_transcript,  # fallback for backward compatibility
             "translated_text": translated,
             "output_audio_url": "http://localhost:8000/speech/output-audio"
         }

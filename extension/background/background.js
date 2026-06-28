@@ -73,8 +73,8 @@ chrome.runtime.onInstalled.addListener(async () => {
     console.log("✅ Voxa: Global Sidepanel configured.");
 
     chrome.storage.local.set({
-      sourceLang: "en-US",
-      targetLang: "hi-IN",
+      sourceLang: "auto",
+      targetLang: "hin_Deva",
       widgetEnabled: true,
       fontSize: "16px",
       volume: 80,

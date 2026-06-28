@@ -32,6 +32,9 @@ from fastapi import WebSocket
 from app.services.speech_service import transcribe_audio
 from app.services.translation_service import translate_text
 from app.services.tts_service import TTSService
+from app.services.punctuation_service import restore_punctuation
+from app.services.grammar_service import correct_grammar
+from app.services.diarization_service import SpeakerDiarizer
 import struct
 
 def calculate_rms(pcm_data: bytes) -> float:
@@ -95,14 +98,15 @@ async def handle_stream(websocket: WebSocket):
 
     audio_buffer = bytearray()
     last_transcribe_len = 0
+    diarizer = SpeakerDiarizer()
 
     try:
         while True:
             audio = await websocket.receive_bytes()
             audio_buffer.extend(audio)
 
-            # Trigger transcription every 2 seconds of new audio (1 sec = 32000 bytes for 16kHz 16-bit mono)
-            if len(audio_buffer) - last_transcribe_len >= 64000:
+            # Trigger transcription every 500ms of new audio (0.5 sec = 16000 bytes for 16kHz 16-bit mono)
+            if len(audio_buffer) - last_transcribe_len >= 16000:
                 # Isolate the newly captured slice to perform Voice Activity Detection (VAD)
                 new_slice = bytes(audio_buffer[last_transcribe_len:])
                 rms = calculate_rms(new_slice)
@@ -112,10 +116,16 @@ async def handle_stream(websocket: WebSocket):
                 # Lowered silence threshold to 150.0 to capture quiet speakers reliably
                 if rms < 150.0:
                     print("Silence detected (amplitude below 150.0). Skipping API call.")
-                    # Prevent buffer from growing infinitely with silence
-                    if len(audio_buffer) > 160000:
-                        audio_buffer = audio_buffer[-64000:]
+                    # If we have transcribed text in the buffer, consider the sentence finished and reset!
+                    if last_transcribe_len > 0:
+                        print("Sentence boundary reached (silence). Resetting audio buffer.")
+                        audio_buffer = bytearray()
                         last_transcribe_len = 0
+                    else:
+                        # Prevent buffer from growing infinitely with pure silence
+                        if len(audio_buffer) > 160000:
+                            audio_buffer = audio_buffer[-32000:]
+                            last_transcribe_len = 0
                     continue
 
                 # Convert current buffer to WAV
@@ -133,30 +143,46 @@ async def handle_stream(websocket: WebSocket):
                     # Execute CPU/IO-bound translation services inside thread executor to prevent event loop blocking
                     loop = asyncio.get_event_loop()
                     asr_res = await loop.run_in_executor(None, transcribe_audio, mock_file, whisper_hint)
-                    transcript = asr_res["text"]
+                    raw_transcript = asr_res["text"]
                     detected_language = asr_res["detected_language"]
                     
-                    if transcript and transcript.strip():
+                    if raw_transcript and raw_transcript.strip():
                         # Resolve NLLB source language dynamically
                         nllb_src_lang = source_lang
                         if source_lang == "auto" and detected_language:
                             nllb_src_lang = WHISPER_TO_NLLB.get(detected_language.lower(), "eng_Latn")
 
-                        translated = await loop.run_in_executor(None, translate_text, transcript, nllb_src_lang, target_lang)
+                        # 1. Punctuation Restoration
+                        punctuated_transcript = await loop.run_in_executor(None, restore_punctuation, raw_transcript)
+
+                        # 2. Speaker Diarization (Run on the latest chunk of audio)
+                        latest_audio_chunk = bytes(audio_buffer[last_transcribe_len:])
+                        speaker = await loop.run_in_executor(None, diarizer.diarize, latest_audio_chunk)
+
+                        # 3. Grammar Correction
+                        corrected_transcript = await loop.run_in_executor(None, correct_grammar, punctuated_transcript)
+
+                        # 4. Translation (Translate the grammatically corrected text)
+                        translated = await loop.run_in_executor(None, translate_text, corrected_transcript, nllb_src_lang, target_lang)
                         
                         # Generate ElevenLabs TTS audio file (saved as output.mp3 on the server)
-                        await loop.run_in_executor(None, TTSService.generate_speech, translated)
+                        # Disabled during streaming to prevent stuttering and high latency on partial sentences!
+                        # await loop.run_in_executor(None, TTSService.generate_speech, translated)
 
-                        # Broadcast transcript and NLLB translated Hindi text back to the extension
+                        # Broadcast details back to the client
                         await websocket.send_json({
-                            "transcript": transcript,
-                            "translation": translated
+                            "speaker": speaker,
+                            "original_transcript": raw_transcript,
+                            "corrected_transcript": corrected_transcript,
+                            "transcript": corrected_transcript,  # fallback for backward compatibility
+                            "translation": translated,
+                            "is_final": False  # Indicate this is a continuous streaming partial update
                         })
-                        print(f"Live STT: {transcript} -> Translation: {translated}")
+                        print(f"Live STT: Speaker='{speaker}' | Raw='{raw_transcript}' | Punctuated='{punctuated_transcript}' | Corrected='{corrected_transcript}' ➔ Translation: '{translated}'")
                         
-                        # ✅ Reset buffer & state on success so next translation/audio represents only the new sentence
-                        audio_buffer = bytearray()
-                        last_transcribe_len = 0
+                        # ✅ Do NOT reset buffer here! We accumulate audio so Whisper can correct past words 
+                        # using full sentence context. The buffer is only reset upon detecting silence (above).
+                        last_transcribe_len = len(audio_buffer)
                     else:
                         # Keep accumulating if Whisper returned an empty result
                         last_transcribe_len = len(audio_buffer)

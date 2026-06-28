@@ -15,12 +15,14 @@ export function connectSocket() {
     return;
   }
 
-  // Load auth token from local storage
-  chrome.storage.local.get("authToken", (data) => {
+  // Load auth token and language preferences from local storage
+  chrome.storage.local.get(["authToken", "sourceLang", "targetLang"], (data) => {
     const token = data.authToken || "no_token_provided";
-    console.log("🔵 Attempting WebSocket connection with token to ws://127.0.0.1:8000/ws...");
+    const sourceLang = data.sourceLang || "auto"; // Default to auto detect if not set
+    const targetLang = data.targetLang || "hin_Deva";
     
-    socket = new WebSocket(`ws://127.0.0.1:8000/ws?token=${encodeURIComponent(token)}`);
+    console.log(`🔵 WebSocket connection: source_lang=${sourceLang}, target_lang=${targetLang}`);
+    socket = new WebSocket(`ws://127.0.0.1:8000/ws?token=${encodeURIComponent(token)}&source_lang=${sourceLang}&target_lang=${targetLang}`);
     socket.binaryType = "arraybuffer";
 
     socket.onopen = () => {
@@ -50,24 +52,26 @@ export function connectSocket() {
     socket.onerror = (e) => {
       console.error("❌ WebSocket Error:", e);
     };
-  });
-}
 
-  socket.onmessage = (event) => {
-    try {
-      const data = JSON.parse(event.data);
-      console.log("📨 WebSocket message received:", data);
-      
-      // Dispatch original transcripts and translations back to background controller
-      chrome.runtime.sendMessage({
-        type: "VOXA_TRANSCRIPT",
-        transcript: data.transcript,
-        translated: data.translation,
-      });
-    } catch (err) {
-      console.error("❌ Error parsing WebSocket message:", err);
-    }
-  };
+    socket.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        console.log("📨 WebSocket message received:", data);
+        
+        // Dispatch original transcripts and translations back to background controller
+        chrome.runtime.sendMessage({
+          type: "VOXA_TRANSCRIPT",
+          speaker: data.speaker || "Speaker A",
+          original_transcript: data.original_transcript || data.transcript,
+          corrected_transcript: data.corrected_transcript || data.transcript,
+          transcript: data.transcript,
+          translated: data.translation,
+        });
+      } catch (err) {
+        console.error("❌ Error parsing WebSocket message:", err);
+      }
+    };
+  });
 }
 
 /**

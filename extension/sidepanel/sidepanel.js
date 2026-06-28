@@ -207,27 +207,74 @@ document.addEventListener("DOMContentLoaded", () => {
   // Translation metrics
   let lastTranscript = "";
   let lastTranslated = "";
+  let segments = []; // Array of { speaker, transcript, translation }
 
   // Onboarding & License Key Handles
   const inputAuthToken = document.getElementById("input-auth-token");
   const btnSaveToken = document.getElementById("btn-save-token");
-  const btnToggleGuide = document.getElementById("btn-toggle-guide");
   const onboardingCardBody = document.getElementById("onboarding-card-body");
-  const onboardingGraphic = document.getElementById("img-onboarding-graphic");
 
-  if (onboardingGraphic) {
-    onboardingGraphic.src = chrome.runtime.getURL("assets/setup_guide.png");
-  }
+  // Fetch NLLB languages and populate select options dynamically
+  const populateLanguages = async () => {
+    try {
+      const res = await fetch("http://localhost:8000/languages");
+      if (res.ok) {
+        const list = await res.json();
+        
+        // Populate selectSource (with Auto Detect at the top)
+        selectSource.innerHTML = `<option value="auto">Auto Detect</option>`;
+        list.forEach((lang) => {
+          selectSource.innerHTML += `<option value="${lang.code}">${lang.name}</option>`;
+        });
 
-  // Load configuration settings from storage
-  chrome.storage.local.get([
-    "sourceLang", "targetLang", "widgetEnabled", "authToken"
-  ], (data) => {
-    if (data.sourceLang) selectSource.value = data.sourceLang;
-    if (data.targetLang) selectTarget.value = data.targetLang;
-    if (data.widgetEnabled !== undefined) toggleWidget.checked = data.widgetEnabled;
-    if (data.authToken) inputAuthToken.value = data.authToken;
-  });
+        // Populate selectTarget
+        selectTarget.innerHTML = "";
+        list.forEach((lang) => {
+          selectTarget.innerHTML += `<option value="${lang.code}">${lang.name}</option>`;
+        });
+
+        // Restore saved settings
+        chrome.storage.local.get(["sourceLang", "targetLang", "widgetEnabled", "authToken"], (data) => {
+          let savedSrc = data.sourceLang || "auto";
+          let savedTgt = data.targetLang || "hin_Deva";
+
+          // Helper to map old ISO format to NLLB format
+          const isoToNllb = {
+            "en-US": "eng_Latn", "hi-IN": "hin_Deva", "es-ES": "spa_Latn", 
+            "fr-FR": "fra_Latn", "de-DE": "deu_Latn", "zh-CN": "zho_Hans"
+          };
+          if (isoToNllb[savedSrc]) savedSrc = isoToNllb[savedSrc];
+          if (isoToNllb[savedTgt]) savedTgt = isoToNllb[savedTgt];
+
+          selectSource.value = savedSrc;
+          selectTarget.value = savedTgt;
+
+          if (data.widgetEnabled !== undefined) toggleWidget.checked = data.widgetEnabled;
+          if (data.authToken) inputAuthToken.value = data.authToken;
+          
+          // Re-save normalized values back to storage
+          chrome.storage.local.set({
+            sourceLang: savedSrc,
+            targetLang: savedTgt
+          });
+        });
+      }
+    } catch (err) {
+      console.error("Failed to load languages list in sidepanel:", err);
+      // Fallback options in case backend is offline
+      selectSource.innerHTML = `
+        <option value="auto">Auto Detect</option>
+        <option value="eng_Latn">English</option>
+        <option value="hin_Deva">Hindi</option>
+      `;
+      selectTarget.innerHTML = `
+        <option value="hin_Deva">Hindi</option>
+        <option value="eng_Latn">English</option>
+      `;
+    }
+  };
+
+  populateLanguages();
 
   // Sync settings when modified
   const updateSettings = () => {
@@ -249,18 +296,7 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   });
 
-  // Collapse / Expand setup guide
-  let isGuideHidden = false;
-  btnToggleGuide.addEventListener("click", () => {
-    isGuideHidden = !isGuideHidden;
-    if (isGuideHidden) {
-      onboardingCardBody.style.display = "none";
-      btnToggleGuide.textContent = "Show Guide";
-    } else {
-      onboardingCardBody.style.display = "flex";
-      btnToggleGuide.textContent = "Hide Guide";
-    }
-  });
+  // Onboarding guide collapsed by default since simplified
 
   // Toast Helpers
   const showError = (message) => {
@@ -303,6 +339,7 @@ document.addEventListener("DOMContentLoaded", () => {
     outputContainer.innerHTML = `<p class="placeholder-text">Translations will be written here in real-time.</p>`;
     lastTranscript = "";
     lastTranslated = "";
+    segments = []; // Clear segments array
     btnPlayTts.classList.add("disabled");
     btnPlayTts.disabled = true;
 
@@ -496,12 +533,49 @@ document.addEventListener("DOMContentLoaded", () => {
 
       case "VOXA_TRANSCRIPT":
         if (message.transcript) {
-          transcriptContainer.innerHTML = `<p class="scroll-text">${message.transcript}</p>`;
+          const speaker = message.speaker || "Speaker A";
+          const text = message.transcript;
+          const translation = message.translated || "";
+
+          // Group by speaker - if speaker changed or segments is empty, create new block
+          if (segments.length === 0 || segments[segments.length - 1].speaker !== speaker) {
+            segments.push({ speaker, transcript: text, translation });
+          } else {
+            segments[segments.length - 1].transcript = text;
+            if (translation) {
+              segments[segments.length - 1].translation = translation;
+            }
+          }
+
+          // Build HTML blocks
+          let transcriptHTML = "";
+          let outputHTML = "";
+
+          segments.forEach((seg, idx) => {
+            transcriptHTML += `
+              <div class="speaker-segment" style="margin-bottom: 12px; padding-left: 8px; border-left: 3px solid #8b5cf6;">
+                <span class="speaker-label" style="font-weight: bold; font-size: 10px; color: #a78bfa; text-transform: uppercase;">${seg.speaker}</span>
+                <p class="scroll-text" style="margin-top: 4px; font-size: 13px; color: #e2e8f0;">${seg.transcript}</p>
+              </div>
+            `;
+            outputHTML += `
+              <div class="speaker-segment" style="margin-bottom: 12px; padding-left: 8px; border-left: 3px solid #22c55e;">
+                <span class="speaker-label" style="font-weight: bold; font-size: 10px; color: #4ade80; text-transform: uppercase;">${seg.speaker}</span>
+                <p class="scroll-text" style="margin-top: 4px; font-size: 13px; color: #e2e8f0;">${seg.translation || "..."}</p>
+              </div>
+            `;
+            if (idx < segments.length - 1) {
+              transcriptHTML += `<div style="border-top: 1px dashed rgba(255,255,255,0.08); margin: 8px 0;"></div>`;
+              outputHTML += `<div style="border-top: 1px dashed rgba(255,255,255,0.08); margin: 8px 0;"></div>`;
+            }
+          });
+
+          transcriptContainer.innerHTML = transcriptHTML;
+          outputContainer.innerHTML = outputHTML;
           lastTranscript = message.transcript;
         }
+
         if (message.translated) {
-          outputContainer.innerHTML = `<p class="scroll-text">${message.translated}</p>`;
-          
           // Only play if the translated text has actually CHANGED, to prevent audio overlap
           if (message.translated !== lastTranslated) {
             lastTranslated = message.translated;

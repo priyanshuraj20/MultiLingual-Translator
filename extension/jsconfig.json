@@ -1,0 +1,16 @@
+{
+  "compilerOptions": {
+    "target": "ES6",
+    "module": "nodenext",
+    "moduleResolution": "nodenext",
+    "allowSyntheticDefaultImports": true
+  },
+  "typeAcquisition": {
+    "include": [
+      "chrome"
+    ]
+  },
+  "exclude": [
+    "node_modules"
+  ]
+}

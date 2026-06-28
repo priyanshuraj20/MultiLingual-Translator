@@ -276,8 +276,15 @@
           break;
 
         case "VOXA_TRANSCRIPT":
+          let speakerPrefix = "";
+          if (message.speaker) {
+            const parts = message.speaker.split(" ");
+            const letter = parts[parts.length - 1] || "A";
+            speakerPrefix = `[${letter}] `;
+          }
+          
           if (message.transcript) {
-            transcriptBox.innerHTML = `${message.transcript}<span class="voxa-cursor"></span>`;
+            transcriptBox.innerHTML = `${speakerPrefix}${message.transcript}<span class="voxa-cursor"></span>`;
           } else if (message.isRecording) {
             transcriptBox.innerHTML = `<span class="voxa-placeholder-msg">Listening to speaker...</span>`;
           } else {
@@ -285,7 +292,7 @@
           }
 
           if (message.translated) {
-            translationBox.textContent = message.translated;
+            translationBox.textContent = `${speakerPrefix}${message.translated}`;
           } else if (message.isProcessing) {
             translationBox.innerHTML = `<span class="voxa-placeholder-msg">Translating using NLLB Core...</span>`;
           } else {

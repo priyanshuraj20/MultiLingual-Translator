@@ -38,6 +38,7 @@ export default function WorkspacePage() {
   const [copied, setCopied] = useState(false);                 // Visual feedback state when copying translation output
   const [error, setError] = useState("");                       // Error alert state
   const [showInstallModal, setShowInstallModal] = useState(false);
+  const [hasDownloaded, setHasDownloaded] = useState(false);
 
   // Dynamic Language Support (200+ NLLB Languages)
   const [languages, setLanguages] = useState<{ code: string; name: string }[]>([]);
@@ -47,7 +48,8 @@ export default function WorkspacePage() {
   useEffect(() => {
     const fetchLanguages = async () => {
       try {
-        const res = await fetch("http://localhost:8000/languages");
+        const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000";
+        const res = await fetch(`${backendUrl}/languages`);
         if (res.ok) {
           const data = await res.json();
           setLanguages(data);
@@ -77,13 +79,20 @@ export default function WorkspacePage() {
   const [outputText, setOutputText] = useState(
     "Welcome to the applied technology conference. Today we will explore the future of neural translation."
   );                                                            // Target translated text (Hindi) returned from the server
+  const [originalTranscript, setOriginalTranscript] = useState("");
+  const [correctedTranscript, setCorrectedTranscript] = useState("");
+  const [segments, setSegments] = useState<{ speaker: string; original: string; corrected: string; translation: string }[]>([]);
   const [ttsAudioUrl, setTtsAudioUrl] = useState<string | null>(null); // URL path to access synthesized TTS speech on the server
 
   // ==========================================
   // References for non-reactive items
   // ==========================================
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null);  // Ref to hold standard browser MediaRecorder instance
-  const audioChunksRef = useRef<Blob[]>([]);                    // Array to aggregate raw chunks of recorded audio stream
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const processorNodeRef = useRef<ScriptProcessorNode | null>(null);
+  const mediaStreamSourceRef = useRef<MediaStreamAudioSourceNode | null>(null);
+  const wsRef = useRef<WebSocket | null>(null);
+  const silenceIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const lastAudioSendTimeRef = useRef<number>(Date.now());
   const audioPlayerRef = useRef<HTMLAudioElement | null>(null);  // Ref to play back recorded local audio file
 
   // ==========================================
@@ -99,145 +108,152 @@ export default function WorkspacePage() {
   // AUDIO RECORDING FUNCTIONS
   // ==========================================
   
-  // Initiates microphone capture stream and creates the MediaRecorder instance
+  // Initiates microphone capture stream and WebSocket connection
   const startRecording = async () => {
     setError("");
     try {
-      // Prompt user for mic permissions
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const recorder = new MediaRecorder(stream);
+      
+      // 1. Establish WebSocket connection for streaming
+      // Since BACKEND_URL isn't explicitly defined globally in this scope block anymore, we use process.env directly
+      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000";
+      const wsUrl = backendUrl.replace("http://", "ws://").replace("https://", "wss://");
+      const ws = new WebSocket(`${wsUrl}/ws?token=voxa_local_dev&source_lang=${sourceLanguage}&target_lang=${targetLanguage}`);
+      wsRef.current = ws;
 
-      mediaRecorderRef.current = recorder;
-      audioChunksRef.current = [];
-
-      // Event handler called continuously as microphone data chunks become available
-      recorder.ondataavailable = (event) => {
-        audioChunksRef.current.push(event.data);
+      ws.onopen = () => {
+        console.log("✅ WebSocket connected for audio streaming");
+        setIsRecording(true);
+        setIsProcessing(true); // Indicate that we are processing in real-time
       };
 
-      // Callback triggered when recording is stopped, consolidating chunks and posting payload to server
-      recorder.onstop = async () => {
-        const blob = new Blob(audioChunksRef.current, { type: "audio/webm" });
-        setAudioBlob(blob);
-        const url = URL.createObjectURL(blob);
-        setAudioUrl(url);
+      ws.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          const speaker = data.speaker || "Speaker A";
+          const raw = data.original_transcript || data.transcript || "";
+          const corrected = data.corrected_transcript || data.transcript || "";
+          const translation = data.translation || "";
+
+          if (raw) setOriginalTranscript(raw);
+          if (corrected) {
+            setCorrectedTranscript(corrected);
+            setTranscript(corrected);
+          }
+          if (translation) setOutputText(translation);
+
+          if (raw || corrected || translation) {
+            setSegments((prev) => {
+              if (prev.length === 0 || prev[prev.length - 1].speaker !== speaker) {
+                return [...prev, { speaker, original: raw, corrected, translation }];
+              } else {
+                const updated = [...prev];
+                updated[updated.length - 1] = {
+                  speaker,
+                  original: raw || updated[updated.length - 1].original,
+                  corrected: corrected || updated[updated.length - 1].corrected,
+                  translation: translation || updated[updated.length - 1].translation
+                };
+                return updated;
+              }
+            });
+          }
+          
+          if (data.output_audio_url) {
+             setTtsAudioUrl(data.output_audio_url);
+          }
+        } catch (e) {
+          console.error("Error parsing WebSocket message:", e);
+        }
+      };
+
+      ws.onerror = (error) => {
+        console.error("WebSocket Error:", error);
+        setError("🔌 Connection Failed: Could not connect to the translation backend.");
+        stopRecording();
+      };
+
+      ws.onclose = () => {
+        console.log("❌ WebSocket closed");
+        setIsRecording(false);
+        setIsProcessing(false);
+      };
+
+      // 2. Setup AudioContext and PCM Pipeline
+      const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+      const audioContext = new AudioContextClass({ sampleRate: 16000 });
+      audioContextRef.current = audioContext;
+
+      const sourceNode = audioContext.createMediaStreamSource(stream);
+      mediaStreamSourceRef.current = sourceNode;
+
+      const processorNode = audioContext.createScriptProcessor(4096, 1, 1);
+      processorNodeRef.current = processorNode;
+
+      processorNode.onaudioprocess = (e) => {
+        if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) return;
         
-        // Auto upload recorded blob for processing
-        await uploadAudio(blob);
+        const inputData = e.inputBuffer.getChannelData(0);
+        const int16Buffer = new Int16Array(inputData.length);
+        
+        for (let i = 0; i < inputData.length; i++) {
+          const s = Math.max(-1, Math.min(1, inputData[i]));
+          int16Buffer[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
+        }
+
+        wsRef.current.send(int16Buffer.buffer);
+        lastAudioSendTimeRef.current = Date.now();
       };
 
-      // Start capture
-      recorder.start();
-      setIsRecording(true);
+      sourceNode.connect(processorNode);
+      processorNode.connect(audioContext.destination);
+
+      silenceIntervalRef.current = setInterval(() => {
+        if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) return;
+        if (Date.now() - lastAudioSendTimeRef.current > 100) {
+          const silenceBuffer = new Int16Array(4096);
+          wsRef.current.send(silenceBuffer.buffer);
+          lastAudioSendTimeRef.current = Date.now();
+        }
+      }, 100);
+
     } catch (err) {
-      setError("🎤 Microphone Access Denied: Please click the lock/settings icon in your browser's address bar and set Microphone permissions to 'Allow' to record audio.");
+      setError("🎤 Microphone Access Denied: Please check permissions.");
       console.error("Recording start error:", err);
     }
   };
 
   // Stops recording and releases microphone resources
   const stopRecording = () => {
-    const recorder = mediaRecorderRef.current;
-    if (!recorder) return;
+    if (silenceIntervalRef.current) {
+      clearInterval(silenceIntervalRef.current);
+      silenceIntervalRef.current = null;
+    }
+    
+    if (processorNodeRef.current) {
+      processorNodeRef.current.disconnect();
+      processorNodeRef.current.onaudioprocess = null;
+      processorNodeRef.current = null;
+    }
 
-    recorder.stop();
-    // Stop all media tracks associated with the stream to release the microphone lock
-    recorder.stream.getTracks().forEach((track) => track.stop());
+    if (mediaStreamSourceRef.current) {
+      mediaStreamSourceRef.current.disconnect();
+      mediaStreamSourceRef.current.mediaStream.getTracks().forEach(track => track.stop());
+      mediaStreamSourceRef.current = null;
+    }
+
+    if (audioContextRef.current && audioContextRef.current.state !== "closed") {
+      audioContextRef.current.close();
+      audioContextRef.current = null;
+    }
+
+    if (wsRef.current) {
+      wsRef.current.close();
+      wsRef.current = null;
+    }
+
     setIsRecording(false);
-  };
-
-  // ==========================================
-  // BACKEND API TRANSLATION STREAM
-  // ==========================================
-  
-  // Uploads raw WebM audio blob to the translation engine endpoint
-  const uploadAudio = async (blob: Blob) => {
-    setIsProcessing(true);
-    setError("");
-
-    // Validate size to prevent uploading empty files
-    if (!blob || blob.size < 1000) {
-      setError("⚠️ Empty Recording: No microphone sound was detected. Please ensure your microphone is active and speak clearly before clicking stop.");
-      setIsProcessing(false);
-      return;
-    }
-
-    try {
-      // Assemble standard multi-part form data
-      const formData = new FormData();
-      formData.append("file", blob, "recording.webm");
-      formData.append("source_lang", sourceLanguage);
-      formData.append("target_lang", targetLanguage);
-
-      console.log(`📤 Sending speech translation request from ${sourceLanguage} to ${targetLanguage}...`);
-
-      // FastAPI Speech-to-Speech Endpoint
-      const response = await fetch("http://localhost:8000/speech/translate-and-speak", {
-        method: "POST",
-        body: formData,
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP network error! Status: ${response.status}`);
-      }
-
-      const data = await response.json();
-      console.log("✅ Translation result from API:", data);
-
-      // Verify the response contains expected success tokens
-      if (data.success) {
-        if (!data.transcript || !data.transcript.trim()) {
-          setError("🔇 No Speech Detected: Whisper ASR did not capture any voice words. Please speak louder or closer to the microphone.");
-          setTranscript("[No voice captured]");
-          setOutputText("[No translation generated]");
-          return;
-        }
-
-        setTranscript(data.transcript || "");
-        setOutputText(data.translated_text || "");
-        setTtsAudioUrl(data.output_audio_url || null);
-
-        // 💡 Auto-play target voice output instantly using browser SpeechSynthesis
-        // This eliminates ElevenLabs latency on initial playback, making the app feel extremely fast!
-        if (typeof window !== "undefined" && window.speechSynthesis) {
-          const synth = window.speechSynthesis;
-          synth.cancel(); // Terminate any active speech queues
-          const utterance = new SpeechSynthesisUtterance(data.translated_text || "");
-          
-          // Map target NLLB code prefix to browser synthesis locale code
-          const langPrefix = targetLanguage.split("_")[0];
-          const isoMapper: { [key: string]: string } = {
-            eng: "en-US", hin: "hi-IN", spa: "es-ES", fra: "fr-FR", deu: "de-DE",
-            ita: "it-IT", jpn: "ja-JP", zho: "zh-CN", rus: "ru-RU", ara: "ar-SA",
-            por: "pt-PT", urd: "ur-PK", ben: "bn-IN", pan: "pa-IN", mar: "mr-IN",
-            tam: "ta-IN", tel: "te-IN", guj: "gu-IN", kan: "kn-IN", mal: "ml-IN",
-            kor: "ko-KR", vie: "vi-VN", tha: "th-TH", ind: "id-ID", tur: "tr-TR",
-            nld: "nl-NL", pol: "pl-PL", swe: "sv-SE", dan: "da-DK", fin: "fi-FI",
-            ces: "cs-CZ", slk: "sk-SK", hun: "hu-HU", ron: "ro-RO", bul: "bg-BG",
-            ukr: "uk-UA", ell: "el-GR", heb: "he-IL"
-          };
-          
-          utterance.lang = isoMapper[langPrefix] || `${langPrefix}-${langPrefix.toUpperCase()}`;
-          utterance.rate = 1.0;
-          synth.speak(utterance);
-        }
-      } else {
-        setError(`⚠️ Engine Failure: ${data.detail || "Speech translation server failed to process request."}`);
-      }
-    } catch (err) {
-      console.error("Audio processing failure:", err);
-      const isNetworkOffline = err instanceof TypeError && err.message.includes("Failed to fetch");
-      if (isNetworkOffline) {
-        setError("🔌 Connection Failed: Could not connect to the translation backend. Please check that your FastAPI local server is running at http://localhost:8000");
-      } else {
-        setError(
-          `⚠️ Service Error: ${err instanceof Error ? err.message : "Internal system down"}`
-        );
-      }
-      setOutputText("Error: Could not retrieve translation from server.");
-    } finally {
-      setIsProcessing(false);
-    }
+    setIsProcessing(false);
   };
 
   // ==========================================
@@ -326,8 +342,8 @@ export default function WorkspacePage() {
                 </div>
 
                 {/* Speech transcript text display */}
-                <div className="flex-1 overflow-y-auto p-8 space-y-6 custom-scrollbar">
-                  {isProcessing && !transcript ? (
+                <div className="flex-1 overflow-y-auto p-8 space-y-4 custom-scrollbar">
+                  {isProcessing && segments.length === 0 ? (
                     <div className="bg-[#8b5cf6]/5 p-6 rounded-xl border border-[#8b5cf6]/10 space-y-4">
                       <div className="flex items-center gap-2.5 border-b border-white/5 pb-2">
                         <span className="w-2 h-2 rounded-full bg-[#8b5cf6] animate-ping" />
@@ -345,24 +361,33 @@ export default function WorkspacePage() {
                       </div>
                       <SkeletonLoader lines={2} />
                     </div>
-                  ) : transcript ? (
-                    <div className="bg-[#8b5cf6]/5 p-6 rounded-xl border border-[#8b5cf6]/20 flex flex-col gap-3">
-                      <div className="flex justify-between items-center select-none border-b border-[#8b5cf6]/10 pb-2">
-                        <span className="font-mono text-[9px] text-[#d0bcff] uppercase tracking-widest font-bold">
-                          Acoustic Transcription
-                        </span>
-                        <span className="text-[10px] px-2 py-0.5 rounded bg-[#8b5cf6]/10 text-[#d0bcff] font-mono select-none">
-                          Whisper v3
-                        </span>
-                      </div>
-                      <p className="text-lg text-white font-sans font-light leading-relaxed">
-                        {transcript}
-                        {/* Blinking prompt cursor from Stitch mockup */}
-                        <span 
-                          id="streaming-cursor"
-                          className="inline-block w-1.5 h-5 bg-[#8b5cf6]/80 ml-2 align-middle animate-streaming-cursor shadow-[0_0_10px_rgba(139,92,246,0.6)]"
-                        />
-                      </p>
+                  ) : segments.length > 0 ? (
+                    <div className="space-y-4">
+                      {segments.map((seg, i) => (
+                        <div key={i} className="bg-[#8b5cf6]/5 p-5 rounded-xl border border-[#8b5cf6]/20 flex flex-col gap-3">
+                          <div className="flex justify-between items-center select-none border-b border-[#8b5cf6]/10 pb-2">
+                            <span className="font-mono text-[9px] text-[#d0bcff] uppercase tracking-widest font-bold">
+                              {seg.speaker}
+                            </span>
+                            <span className="text-[10px] px-2 py-0.5 rounded bg-[#8b5cf6]/10 text-[#d0bcff] font-mono select-none">
+                              Live ASR
+                            </span>
+                          </div>
+                          <div className="text-sm space-y-2 leading-relaxed">
+                            <p className="text-[#cbc3d7]/60">
+                              <strong className="text-[9px] uppercase font-mono tracking-wider mr-1.5">Original:</strong>
+                              {seg.original}
+                            </p>
+                            <p className="text-white">
+                              <strong className="text-[9px] uppercase font-mono tracking-wider mr-1.5">Corrected:</strong>
+                              {seg.corrected}
+                              {i === segments.length - 1 && (
+                                <span className="inline-block w-1.5 h-4 bg-[#8b5cf6]/80 ml-1.5 align-middle animate-streaming-cursor" />
+                              )}
+                            </p>
+                          </div>
+                        </div>
+                      ))}
                     </div>
                   ) : (
                     <div className="bg-white/3 p-6 rounded-xl border border-white/5 flex flex-col gap-3">
@@ -379,10 +404,7 @@ export default function WorkspacePage() {
                           ? "🎤 Capturing acoustic signals... Speak clearly into your microphone."
                           : "Simulating translation on a web page. Press the microphone button below to start."}
                         {!isRecording && (
-                          <span 
-                            id="streaming-cursor"
-                            className="inline-block w-1.5 h-5 bg-white/30 ml-2 align-middle animate-streaming-cursor"
-                          />
+                          <span className="inline-block w-1.5 h-5 bg-white/30 ml-2 align-middle animate-streaming-cursor" />
                         )}
                       </p>
                     </div>
@@ -480,45 +502,62 @@ export default function WorkspacePage() {
                 </div>
 
                 {/* Translation output display block */}
-                <div className="flex-1 overflow-y-auto p-8 space-y-6 custom-scrollbar">
-                  <div className="bg-white/3 p-6 rounded-xl border border-white/5 flex flex-col gap-4">
-                    <div className="flex justify-between items-center select-none border-b border-white/5 pb-2">
-                      <span className="font-mono text-[9px] text-[#adc6ff] uppercase tracking-widest font-bold">
-                        Target Language: HI-IN (NLLB-200-DISTILLED)
-                      </span>
-                      <span className="text-[10px] px-2 py-0.5 rounded bg-[#adc6ff]/10 text-[#adc6ff] font-mono select-none">
-                        Active Layer
-                      </span>
+                <div className="flex-1 overflow-y-auto p-8 space-y-4 custom-scrollbar">
+                  {isProcessing && segments.length === 0 ? (
+                    <div className="bg-[#adc6ff]/5 p-6 rounded-xl border border-white/5 space-y-4">
+                      <div className="flex items-center gap-2 border-b border-white/5 pb-2">
+                        <span className="w-2 h-2 rounded-full bg-[#adc6ff] animate-ping" />
+                        <p className="font-mono text-[9px] text-[#adc6ff] uppercase tracking-widest font-bold">
+                          [NLLB CORE] Running sequence translation...
+                        </p>
+                      </div>
+                      <div className="font-mono text-[11px] text-zinc-500 space-y-1.5 pl-1 leading-relaxed">
+                        <div>&gt; Loading NLLB-200-Distilled translation layer...</div>
+                        <div>&gt; Aligning multilingual context vectors (EN --&gt; HI)...</div>
+                        <div className="flex items-center gap-1.5 text-zinc-400">
+                          <span className="w-1.5 h-3 bg-[#adc6ff] animate-pulse" />
+                          <span>Synthesizing output pitch spectrograms...</span>
+                        </div>
+                      </div>
+                      <SkeletonLoader lines={3} />
                     </div>
-                    {isProcessing ? (
-                      <div className="space-y-4">
-                        <div className="flex items-center gap-2 border-b border-white/5 pb-2">
-                          <span className="w-2 h-2 rounded-full bg-[#adc6ff] animate-ping" />
-                          <p className="font-mono text-[9px] text-[#adc6ff] uppercase tracking-widest font-bold">
-                            [NLLB CORE] Running sequence translation...
+                  ) : segments.length > 0 ? (
+                    <div className="space-y-4">
+                      {segments.map((seg, i) => (
+                        <div key={i} className="bg-white/3 p-5 rounded-xl border border-white/5 flex flex-col gap-3">
+                          <div className="flex justify-between items-center select-none border-b border-white/5 pb-2">
+                            <span className="font-mono text-[9px] text-[#adc6ff] uppercase tracking-widest font-bold">
+                              {seg.speaker}
+                            </span>
+                            <span className="text-[10px] px-2 py-0.5 rounded bg-[#adc6ff]/10 text-[#adc6ff] font-mono select-none">
+                              Active Translation
+                            </span>
+                          </div>
+                          <p className="text-lg text-white font-sans font-light leading-relaxed">
+                            {seg.translation || "..."}
+                            {i === segments.length - 1 && (
+                              <span className="inline-block w-1.5 h-5 bg-[#adc6ff]/80 ml-2 align-middle animate-streaming-cursor" />
+                            )}
                           </p>
                         </div>
-                        <div className="font-mono text-[11px] text-zinc-500 space-y-1.5 pl-1 leading-relaxed">
-                          <div>&gt; Loading NLLB-200-Distilled translation layer...</div>
-                          <div>&gt; Aligning multilingual context vectors (EN --&gt; HI)...</div>
-                          <div className="flex items-center gap-1.5 text-zinc-400">
-                            <span className="w-1.5 h-3 bg-[#adc6ff] animate-pulse" />
-                            <span>Synthesizing output pitch spectrograms...</span>
-                          </div>
-                        </div>
-                        <SkeletonLoader lines={3} />
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="bg-white/3 p-6 rounded-xl border border-white/5 flex flex-col gap-4">
+                      <div className="flex justify-between items-center select-none border-b border-white/5 pb-2">
+                        <span className="font-mono text-[9px] text-[#adc6ff] uppercase tracking-widest font-bold">
+                          Target Language: {targetLanguage.toUpperCase()}
+                        </span>
+                        <span className="text-[10px] px-2 py-0.5 rounded bg-[#adc6ff]/10 text-[#adc6ff] font-mono select-none">
+                          Active Layer
+                        </span>
                       </div>
-                    ) : (
                       <p className="text-lg text-white font-sans font-light leading-relaxed">
                         {outputText}
-                        {/* Blinking prompt cursor */}
-                        <span 
-                          id="streaming-cursor"
-                          className="inline-block w-1.5 h-5 bg-[#adc6ff]/80 ml-2 align-middle animate-streaming-cursor shadow-[0_0_10px_rgba(173,198,255,0.6)]"
-                        />
+                        <span className="inline-block w-1.5 h-5 bg-[#adc6ff]/80 ml-2 align-middle animate-streaming-cursor" />
                       </p>
-                    )}
-                  </div>
+                    </div>
+                  )}
                 </div>
 
                 {/* TTS Synthetic Audio player when available */}
@@ -549,6 +588,9 @@ export default function WorkspacePage() {
                     onClick={() => {
                       setOutputText("");
                       setTranscript("");
+                      setOriginalTranscript("");
+                      setCorrectedTranscript("");
+                      setSegments([]);
                       setTtsAudioUrl(null);
                       setAudioUrl(null);
                       setAudioBlob(null);
@@ -708,16 +750,52 @@ export default function WorkspacePage() {
                   <li><strong>Start Translation</strong>: Press <strong>Ctrl + Shift + U</strong> (or right-click 'Activate Voxa Capture') on your meeting page and click <strong>Start Capturing</strong>.</li>
                 </ol>
 
-                {/* Facts info box */}
-                <div className="bg-white/3 border border-white/5 rounded-lg p-3 text-[11px] text-[#ffb869] font-mono mb-6">
-                  💡 Voxa requires Developer Mode to load custom audio capture libraries. Secure License Token will sync on launch.
-                </div>
+                {/* Display License Key when extension is downloaded */}
+                {hasDownloaded ? (
+                  <div className="bg-emerald-500/10 border border-[#4ade80]/20 rounded-xl p-5 mb-6 text-left flex flex-col gap-3">
+                    <span className="font-mono text-[9px] text-[#4ade80] uppercase tracking-widest font-bold">
+                      🔑 YOUR VOXA LICENSE KEY
+                    </span>
+                    <div className="flex gap-2">
+                      <input 
+                        type="text" 
+                        readOnly 
+                        /* 
+                          TODO: Later on when you implement user login/auth:
+                          1. Retrieve the currently authenticated user's profile state.
+                          2. Generate/fetch their unique random voxa license key from your SQL/NoSQL database.
+                          3. Replace this static placeholder "voxa_local_dev" with the user's active key (e.g. user.licenseKey).
+                        */
+                        value="voxa_local_dev" 
+                        className="bg-black/40 border border-white/10 rounded-lg p-2.5 font-mono text-xs text-white flex-1 outline-none select-all"
+                      />
+                      <button 
+                        onClick={() => {
+                          navigator.clipboard.writeText("voxa_local_dev");
+                          alert("License key copied to clipboard!");
+                        }}
+                        className="bg-[#8b5cf6] hover:bg-[#7c3aed] text-white px-4 rounded-lg font-bold text-xs transition-all active:scale-95"
+                      >
+                        Copy
+                      </button>
+                    </div>
+                    <p className="text-[10px] text-zinc-400 leading-relaxed">
+                      Copy this key and paste it inside the <strong>Onboarding & License Key</strong> field in the extension Sidepanel to activate Voxa capture capabilities.
+                    </p>
+                  </div>
+                ) : (
+                  /* Facts info box */
+                  <div className="bg-white/3 border border-white/5 rounded-lg p-3 text-[11px] text-[#ffb869] font-mono mb-6">
+                    💡 Voxa requires Developer Mode to load custom audio capture libraries. Secure License Token will sync on launch.
+                  </div>
+                )}
               </div>
 
               <div className="flex flex-col gap-3">
                 <a 
                   href="/Voxa.zip" 
                   download="Voxa.zip" 
+                  onClick={() => setHasDownloaded(true)}
                   className="bg-[#8b5cf6] hover:bg-[#7c3aed] text-white py-3 px-4 rounded-lg font-bold text-sm text-center flex items-center justify-center gap-2 shadow-lg shadow-[#8b5cf6]/20 transition-all duration-255"
                 >
                   <span className="material-symbols-outlined text-sm">download</span>

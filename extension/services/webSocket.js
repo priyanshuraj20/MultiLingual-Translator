@@ -50,24 +50,23 @@ export function connectSocket() {
     socket.onerror = (e) => {
       console.error("❌ WebSocket Error:", e);
     };
-  });
-}
 
-  socket.onmessage = (event) => {
-    try {
-      const data = JSON.parse(event.data);
-      console.log("📨 WebSocket message received:", data);
-      
-      // Dispatch original transcripts and translations back to background controller
-      chrome.runtime.sendMessage({
-        type: "VOXA_TRANSCRIPT",
-        transcript: data.transcript,
-        translated: data.translation,
-      });
-    } catch (err) {
-      console.error("❌ Error parsing WebSocket message:", err);
-    }
-  };
+    socket.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        console.log("📨 WebSocket message received:", data);
+        
+        // Dispatch original transcripts and translations back to background controller
+        chrome.runtime.sendMessage({
+          type: "VOXA_TRANSCRIPT",
+          transcript: data.transcript,
+          translated: data.translation,
+        });
+      } catch (err) {
+        console.error("❌ Error parsing WebSocket message:", err);
+      }
+    };
+  });
 }
 
 /**

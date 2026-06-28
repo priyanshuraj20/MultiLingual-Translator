@@ -27,7 +27,7 @@ def restore_punctuation(text: str) -> str:
                     "content": text
                 }
             ],
-            model="llama3-8b-8192",
+            model="llama-3.1-8b-instant",
             temperature=0.0
         )
         return response.choices[0].message.content.strip()

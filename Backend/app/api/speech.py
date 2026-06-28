@@ -1,8 +1,10 @@
-from fastapi import APIRouter, UploadFile, File, HTTPException, Form
+from fastapi import APIRouter, UploadFile, File, HTTPException, Form, Request
 from fastapi.responses import FileResponse
 import os
 
 from app.services.speech_service import transcribe_audio
+from app.services.punctuation_service import restore_punctuation
+from app.services.grammar_service import correct_grammar
 from app.services.translation_service import translate_text
 from app.services.tts_service import TTSService
 import traceback
@@ -25,6 +27,7 @@ from app.services.languages import LANGUAGES, WHISPER_LANG_MAP, WHISPER_TO_NLLB
 
 @router.post("/translate-and-speak")
 async def translate_and_speak(
+    request: Request,
     file: UploadFile = File(...),
     source_lang: str = Form("eng_Latn"),
     target_lang: str = Form("hin_Deva")
@@ -50,14 +53,24 @@ async def translate_and_speak(
 
         print(f"🎙️ Whisper ASR transcribing: '{transcript}' | Detected Lang: {detected_language} | NLLB Source: {nllb_src_lang} ➔ Target: {target_lang}")
 
-        translated = translate_text(transcript, src_lang=nllb_src_lang, tgt_lang=target_lang)
+        # Restore punctuation & correct grammar before translation
+        punctuated = restore_punctuation(transcript)
+        corrected = correct_grammar(punctuated)
+        print(f"✨ Punctuation restored: '{punctuated}' | Grammar corrected: '{corrected}'")
+
+        translated = translate_text(corrected, src_lang=nllb_src_lang, tgt_lang=target_lang)
         audio_file = TTSService.generate_speech(translated);
+
+        # Dynamically build output audio URL based on base request URL
+        base_url = str(request.base_url)
+        output_audio_url = f"{base_url}speech/output-audio"
 
         return {
             "success": True,
             "transcript": transcript,
+            "corrected_transcript": corrected,
             "translated_text": translated,
-            "output_audio_url": "http://localhost:8000/speech/output-audio"
+            "output_audio_url": output_audio_url
         }
 
     except Exception as e:

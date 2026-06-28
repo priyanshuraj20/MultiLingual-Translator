@@ -7,7 +7,7 @@ import React, { useEffect, useRef } from "react";
  * that renders an interactive, flowy dark-neon aesthetic background.
  * It compiles a custom fragment shader that responds to mouse coordinates.
  */
-export default function ShaderBackground() {
+const ShaderBackground = React.memo(function ShaderBackground() {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
   useEffect(() => {
@@ -177,4 +177,6 @@ export default function ShaderBackground() {
       className="fixed top-0 left-0 w-full h-full z-0 opacity-35 pointer-events-none"
     />
   );
-}
+});
+
+export default ShaderBackground;

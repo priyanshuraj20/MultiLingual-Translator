@@ -34,7 +34,7 @@ from app.services.translation_service import translate_text
 from app.services.tts_service import TTSService
 from app.services.punctuation_service import restore_punctuation
 from app.services.grammar_service import correct_grammar
-from app.services.diarization_service import SpeakerDiarizer
+# Diarization removed to prevent CPU event loop lag
 import struct
 
 def calculate_rms(pcm_data: bytes) -> float:
@@ -98,7 +98,7 @@ async def handle_stream(websocket: WebSocket):
 
     audio_buffer = bytearray()
     last_transcribe_len = 0
-    diarizer = SpeakerDiarizer()
+    # Diarization removed for low latency CPU execution
 
     try:
         while True:
@@ -155,9 +155,8 @@ async def handle_stream(websocket: WebSocket):
                         # 1. Punctuation Restoration
                         punctuated_transcript = await loop.run_in_executor(None, restore_punctuation, raw_transcript)
 
-                        # 2. Speaker Diarization (Run on the latest chunk of audio)
-                        latest_audio_chunk = bytes(audio_buffer[last_transcribe_len:])
-                        speaker = await loop.run_in_executor(None, diarizer.diarize, latest_audio_chunk)
+                        # 2. Speaker Diarization bypassed to prevent keepalive timeout lag
+                        speaker = "Speaker A"
 
                         # 3. Grammar Correction
                         corrected_transcript = await loop.run_in_executor(None, correct_grammar, punctuated_transcript)

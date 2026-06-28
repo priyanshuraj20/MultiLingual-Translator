@@ -262,29 +262,68 @@ export default function WorkspacePage() {
   
   // Initiates browser playback for the synthesized translation audio file from server URL
   const playTTSAudio = () => {
-    if (!ttsAudioUrl) {
-      setError("No target audio found. Record speech to generate speech.");
+    if (!outputText) {
+      setError("No translation text found to play.");
       return;
     }
 
-    try {
-      const audio = new Audio(ttsAudioUrl);
-      setIsPlayingTTS(true);
-      
-      // Reset play status when track ends
-      audio.onended = () => setIsPlayingTTS(false);
-      audio.onerror = () => {
-        setError("Failed to stream TTS output file.");
+    // Use server-side ElevenLabs synthesized audio if available
+    if (ttsAudioUrl) {
+      try {
+        const audio = new Audio(ttsAudioUrl);
+        setIsPlayingTTS(true);
+        audio.onended = () => setIsPlayingTTS(false);
+        audio.onerror = () => {
+          setError("Failed to stream TTS output file.");
+          setIsPlayingTTS(false);
+        };
+        audio.play().catch((e) => {
+          setError(`Audio play failed: ${e.message}`);
+          setIsPlayingTTS(false);
+        });
+      } catch (err) {
+        setError("Playback system initialization failed.");
         setIsPlayingTTS(false);
-      };
+      }
+      return;
+    }
 
-      audio.play().catch((e) => {
-        setError(`Audio play failed: ${e.message}`);
+    // Fallback: Use browser native SpeechSynthesis
+    if (typeof window !== "undefined" && window.speechSynthesis) {
+      try {
+        const synth = window.speechSynthesis;
+        synth.cancel();
+        const utterance = new SpeechSynthesisUtterance(outputText);
+        
+        // Simple mapping from NLLB prefix to browser locales
+        const langPrefix = targetLanguage.split("_")[0];
+        const isoMapper: Record<string, string> = {
+          eng: "en-US",
+          hin: "hi-IN",
+          jpn: "ja-JP",
+          spa: "es-ES",
+          fra: "fr-FR",
+          deu: "de-DE",
+          zho: "zh-CN",
+          rus: "ru-RU",
+          ara: "ar-SA",
+          por: "pt-BR",
+          ita: "it-IT",
+          kor: "ko-KR"
+        };
+        
+        utterance.lang = isoMapper[langPrefix] || `${langPrefix}-${langPrefix.toUpperCase()}`;
+        setIsPlayingTTS(true);
+        utterance.onend = () => setIsPlayingTTS(false);
+        utterance.onerror = () => setIsPlayingTTS(false);
+        
+        synth.speak(utterance);
+      } catch (err) {
+        console.error("Local SpeechSynthesis failed:", err);
         setIsPlayingTTS(false);
-      });
-    } catch (err) {
-      setError("Playback system initialization failed.");
-      setIsPlayingTTS(false);
+      }
+    } else {
+      setError("Local voice synthesis not supported in this browser.");
     }
   };
 
@@ -343,7 +382,7 @@ export default function WorkspacePage() {
 
                 {/* Speech transcript text display */}
                 <div className="flex-1 overflow-y-auto p-8 space-y-4 custom-scrollbar">
-                  {isProcessing && segments.length === 0 ? (
+                  {isProcessing && !transcript ? (
                     <div className="bg-[#8b5cf6]/5 p-6 rounded-xl border border-[#8b5cf6]/10 space-y-4">
                       <div className="flex items-center gap-2.5 border-b border-white/5 pb-2">
                         <span className="w-2 h-2 rounded-full bg-[#8b5cf6] animate-ping" />
@@ -361,33 +400,24 @@ export default function WorkspacePage() {
                       </div>
                       <SkeletonLoader lines={2} />
                     </div>
-                  ) : segments.length > 0 ? (
-                    <div className="space-y-4">
-                      {segments.map((seg, i) => (
-                        <div key={i} className="bg-[#8b5cf6]/5 p-5 rounded-xl border border-[#8b5cf6]/20 flex flex-col gap-3">
-                          <div className="flex justify-between items-center select-none border-b border-[#8b5cf6]/10 pb-2">
-                            <span className="font-mono text-[9px] text-[#d0bcff] uppercase tracking-widest font-bold">
-                              {seg.speaker}
-                            </span>
-                            <span className="text-[10px] px-2 py-0.5 rounded bg-[#8b5cf6]/10 text-[#d0bcff] font-mono select-none">
-                              Live ASR
-                            </span>
-                          </div>
-                          <div className="text-sm space-y-2 leading-relaxed">
-                            <p className="text-[#cbc3d7]/60">
-                              <strong className="text-[9px] uppercase font-mono tracking-wider mr-1.5">Original:</strong>
-                              {seg.original}
-                            </p>
-                            <p className="text-white">
-                              <strong className="text-[9px] uppercase font-mono tracking-wider mr-1.5">Corrected:</strong>
-                              {seg.corrected}
-                              {i === segments.length - 1 && (
-                                <span className="inline-block w-1.5 h-4 bg-[#8b5cf6]/80 ml-1.5 align-middle animate-streaming-cursor" />
-                              )}
-                            </p>
-                          </div>
-                        </div>
-                      ))}
+                  ) : transcript ? (
+                    <div className="bg-[#8b5cf6]/5 p-6 rounded-xl border border-[#8b5cf6]/20 flex flex-col gap-3">
+                      <div className="flex justify-between items-center select-none border-b border-[#8b5cf6]/10 pb-2">
+                        <span className="font-mono text-[9px] text-[#d0bcff] uppercase tracking-widest font-bold">
+                          Acoustic Transcription
+                        </span>
+                        <span className="text-[10px] px-2 py-0.5 rounded bg-[#8b5cf6]/10 text-[#d0bcff] font-mono select-none">
+                          Whisper v3
+                        </span>
+                      </div>
+                      <p className="text-lg text-white font-sans font-light leading-relaxed">
+                        {transcript}
+                        {/* Blinking prompt cursor from Stitch mockup */}
+                        <span 
+                          id="streaming-cursor"
+                          className="inline-block w-1.5 h-5 bg-[#8b5cf6]/80 ml-2 align-middle animate-streaming-cursor shadow-[0_0_10px_rgba(139,92,246,0.6)]"
+                        />
+                      </p>
                     </div>
                   ) : (
                     <div className="bg-white/3 p-6 rounded-xl border border-white/5 flex flex-col gap-3">
@@ -441,7 +471,7 @@ export default function WorkspacePage() {
                     )}
                     <button
                       onClick={isRecording ? stopRecording : startRecording}
-                      disabled={isProcessing}
+                      disabled={isProcessing && !isRecording}
                       className={`group w-16 h-16 flex items-center justify-center rounded-full border transition-all duration-300 relative z-10 ${
                         isRecording
                           ? "border-[#8b5cf6]/50 bg-gradient-to-tr from-[#7c3aed] to-[#8b5cf6] text-white hover:scale-105 active:scale-95 shadow-[0_0_20px_rgba(139,92,246,0.5)]"
@@ -502,62 +532,45 @@ export default function WorkspacePage() {
                 </div>
 
                 {/* Translation output display block */}
-                <div className="flex-1 overflow-y-auto p-8 space-y-4 custom-scrollbar">
-                  {isProcessing && segments.length === 0 ? (
-                    <div className="bg-[#adc6ff]/5 p-6 rounded-xl border border-white/5 space-y-4">
-                      <div className="flex items-center gap-2 border-b border-white/5 pb-2">
-                        <span className="w-2 h-2 rounded-full bg-[#adc6ff] animate-ping" />
-                        <p className="font-mono text-[9px] text-[#adc6ff] uppercase tracking-widest font-bold">
-                          [NLLB CORE] Running sequence translation...
-                        </p>
-                      </div>
-                      <div className="font-mono text-[11px] text-zinc-500 space-y-1.5 pl-1 leading-relaxed">
-                        <div>&gt; Loading NLLB-200-Distilled translation layer...</div>
-                        <div>&gt; Aligning multilingual context vectors (EN --&gt; HI)...</div>
-                        <div className="flex items-center gap-1.5 text-zinc-400">
-                          <span className="w-1.5 h-3 bg-[#adc6ff] animate-pulse" />
-                          <span>Synthesizing output pitch spectrograms...</span>
-                        </div>
-                      </div>
-                      <SkeletonLoader lines={3} />
+                <div className="flex-1 overflow-y-auto p-8 space-y-6 custom-scrollbar">
+                  <div className="bg-white/3 p-6 rounded-xl border border-white/5 flex flex-col gap-4">
+                    <div className="flex justify-between items-center select-none border-b border-white/5 pb-2">
+                      <span className="font-mono text-[9px] text-[#adc6ff] uppercase tracking-widest font-bold">
+                        Target Language: {targetLanguage.toUpperCase()}
+                      </span>
+                      <span className="text-[10px] px-2 py-0.5 rounded bg-[#adc6ff]/10 text-[#adc6ff] font-mono select-none">
+                        Active Layer
+                      </span>
                     </div>
-                  ) : segments.length > 0 ? (
-                    <div className="space-y-4">
-                      {segments.map((seg, i) => (
-                        <div key={i} className="bg-white/3 p-5 rounded-xl border border-white/5 flex flex-col gap-3">
-                          <div className="flex justify-between items-center select-none border-b border-white/5 pb-2">
-                            <span className="font-mono text-[9px] text-[#adc6ff] uppercase tracking-widest font-bold">
-                              {seg.speaker}
-                            </span>
-                            <span className="text-[10px] px-2 py-0.5 rounded bg-[#adc6ff]/10 text-[#adc6ff] font-mono select-none">
-                              Active Translation
-                            </span>
-                          </div>
-                          <p className="text-lg text-white font-sans font-light leading-relaxed">
-                            {seg.translation || "..."}
-                            {i === segments.length - 1 && (
-                              <span className="inline-block w-1.5 h-5 bg-[#adc6ff]/80 ml-2 align-middle animate-streaming-cursor" />
-                            )}
+                    {isProcessing && !outputText ? (
+                      <div className="space-y-4">
+                        <div className="flex items-center gap-2 border-b border-white/5 pb-2">
+                          <span className="w-2 h-2 rounded-full bg-[#adc6ff] animate-ping" />
+                          <p className="font-mono text-[9px] text-[#adc6ff] uppercase tracking-widest font-bold">
+                            [NLLB CORE] Running sequence translation...
                           </p>
                         </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="bg-white/3 p-6 rounded-xl border border-white/5 flex flex-col gap-4">
-                      <div className="flex justify-between items-center select-none border-b border-white/5 pb-2">
-                        <span className="font-mono text-[9px] text-[#adc6ff] uppercase tracking-widest font-bold">
-                          Target Language: {targetLanguage.toUpperCase()}
-                        </span>
-                        <span className="text-[10px] px-2 py-0.5 rounded bg-[#adc6ff]/10 text-[#adc6ff] font-mono select-none">
-                          Active Layer
-                        </span>
+                        <div className="font-mono text-[11px] text-zinc-500 space-y-1.5 pl-1 leading-relaxed">
+                          <div>&gt; Loading NLLB-Distilled translation layer...</div>
+                          <div>&gt; Aligning multilingual context vectors (EN --&gt; HI)...</div>
+                          <div className="flex items-center gap-1.5 text-zinc-400">
+                            <span className="w-1.5 h-3 bg-[#adc6ff] animate-pulse" />
+                            <span>Synthesizing output pitch spectrograms...</span>
+                          </div>
+                        </div>
+                        <SkeletonLoader lines={3} />
                       </div>
+                    ) : (
                       <p className="text-lg text-white font-sans font-light leading-relaxed">
                         {outputText}
-                        <span className="inline-block w-1.5 h-5 bg-[#adc6ff]/80 ml-2 align-middle animate-streaming-cursor" />
+                        {/* Blinking prompt cursor */}
+                        <span 
+                          id="streaming-cursor"
+                          className="inline-block w-1.5 h-5 bg-[#adc6ff]/80 ml-2 align-middle animate-streaming-cursor shadow-[0_0_10px_rgba(173,198,255,0.6)]"
+                        />
                       </p>
-                    </div>
-                  )}
+                    )}
+                  </div>
                 </div>
 
                 {/* TTS Synthetic Audio player when available */}
@@ -602,9 +615,9 @@ export default function WorkspacePage() {
                   </button>
                   <button
                     onClick={playTTSAudio}
-                    disabled={!ttsAudioUrl || isPlayingTTS}
+                    disabled={!outputText || isPlayingTTS}
                     className={`font-mono text-[10px] uppercase tracking-widest px-5 py-3 rounded-lg font-bold flex items-center gap-2 transition-all active:scale-95 ${
-                      !ttsAudioUrl || isPlayingTTS
+                      !outputText || isPlayingTTS
                         ? "border border-white/5 bg-white/2 text-zinc-600 cursor-not-allowed"
                         : "bg-[#8b5cf6] text-white hover:bg-[#7c3aed] shadow-lg shadow-[#8b5cf6]/15"
                     }`}
